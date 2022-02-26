@@ -61,18 +61,30 @@ impl<'a> Lexer<'a> {
     }
 
     fn mul(&mut self) -> Node {
-        let mut node = self.primary();
+        let mut node = self.unary();
         loop {
             if self.token_list.try_consume(&TokenKind::Mul) {
-                node =
-                    Node::new_bin_op_node(NodeKind::Mul, Box::new(node), Box::new(self.primary()));
+                node = Node::new_bin_op_node(NodeKind::Mul, Box::new(node), Box::new(self.unary()));
             } else if self.token_list.try_consume(&TokenKind::Div) {
-                node =
-                    Node::new_bin_op_node(NodeKind::Div, Box::new(node), Box::new(self.primary()));
+                node = Node::new_bin_op_node(NodeKind::Div, Box::new(node), Box::new(self.unary()));
             } else {
                 return node;
             }
         }
+    }
+
+    fn unary(&mut self) -> Node {
+        if self.token_list.try_consume(&TokenKind::Plus) {
+            return self.primary();
+        }
+        if self.token_list.try_consume(&TokenKind::Minus) {
+            return Node::new_bin_op_node(
+                NodeKind::Sub,
+                Box::new(Node::new_num(0)),
+                Box::new(self.primary()),
+            );
+        }
+        return self.primary();
     }
 
     fn primary(&mut self) -> Node {
