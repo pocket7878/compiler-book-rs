@@ -1,58 +1,53 @@
+mod ast;
 mod error_report;
-mod token;
-mod token_iterator;
-use std::{env, error, process::exit};
+mod tokenizer;
+use std::env;
 
-use crate::{
-    token::Token,
-    token_iterator::{TokenIterator, TokenizeError},
-};
+use ast::{Node, NodeKind};
+
+use crate::{ast::Lexer, tokenizer::Tokenizer};
 
 fn main() {
     let args = env::args().collect::<Vec<_>>();
     if args.len() != 2 {
-        println!("Usage: {} <ret-code>", args[0]);
+        println!("Usage: {} <code>", args[0]);
         return;
     }
 
-    let original_program = args[1].clone();
-    let program = original_program.clone();
+    let program = args[1].clone();
+    let token_list = Tokenizer::new(&program).tokenize();
+    let root = Lexer::new(token_list).expr();
 
-    println!("\t.section	__TEXT,__text,regular,pure_instructions");
     println!(".globl	_main");
     println!("_main:");
-    println!("\tmov x0, #0");
+    println!("\tmov x0, xzr");
 
-    let mut token_iter = TokenIterator::new(&program);
-    let head_number = token_iter.expect_num();
-    println!("\tadd x0, x0, #{}", head_number);
+    gen(&root);
 
-    while let Some(token) = token_iter.next() {
-        if token.is_err() {
-            match token.unwrap_err() {
-                e @ TokenizeError::UnknownToken { position } => {
-                    error_report::error_at(&original_program, position, &e.to_string());
-                }
-            }
-            exit(1)
-        }
+    println!("\tldr x0, [sp], #16");
+    println!("\tret");
+}
 
-        match token.unwrap() {
-            Token::Reserved { word, position } => {
-                if word == "+" {
-                    let n = token_iter.expect_num();
-                    println!("\tadd x0, x0, #{}", n);
-                } else if word == "-" {
-                    let n = token_iter.expect_num();
-                    println!("\tsub x0, x0, #{}", n);
-                }
-            }
-            n => {
-                error_report::error_at(&original_program, n.position(), "Unexpected token");
-                exit(1);
-            }
-        }
+fn gen(expr_node: &Node) {
+    if expr_node.kind == NodeKind::Num {
+        println!("\tmov x2, #{}", expr_node.val.unwrap(),);
+        println!("\tstr x2, [sp, #-16]!");
+        return;
     }
 
-    println!("\tret");
+    gen(expr_node.lhs.as_ref().unwrap());
+    gen(expr_node.rhs.as_ref().unwrap());
+
+    println!("\tldr x1, [sp], 16");
+    println!("\tldr x0, [sp], 16");
+
+    match expr_node.kind {
+        NodeKind::Add => println!("\tadd x0, x0, x1"),
+        NodeKind::Sub => println!("\tsub x0, x0, x1"),
+        NodeKind::Mul => println!("\tmul x0, x0, x1"),
+        NodeKind::Div => println!("\tsdiv x0, x0, x1"),
+        _ => unreachable!(),
+    }
+
+    println!("\tstr x0, [sp, #-16]!");
 }
