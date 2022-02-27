@@ -1,7 +1,7 @@
-use crate::ast::{Node, NodeKind};
+use crate::lexer::{Node, NodeKind};
 
 const FRAME_POINTER_REGISTER: &str = "x29";
-const STACK_ASLIGNMENT: i32 = 16;
+const STACK_ALIGNMENT: i32 = 16;
 
 pub struct CodeGenerator {
     pub program: Vec<Node>,
@@ -93,9 +93,8 @@ impl CodeGenerator {
     fn generate_program_opening(&self) {
         println!(".globl	_main");
         println!("_main:");
-        // Allocate a-z variable addresses in stack.
         println!("\tmov {}, sp", FRAME_POINTER_REGISTER);
-        println!("\tsub sp, sp, #{}", STACK_ASLIGNMENT * 26);
+        println!("\tsub sp, sp, #{}", STACK_ALIGNMENT * 26);
     }
 
     fn generate_program_ending(&self) {
@@ -105,10 +104,10 @@ impl CodeGenerator {
     }
 
     fn generate_push_register_to_stack(&self, register: &str) {
-        println!("\tstr {}, [sp, #-{}]!", register, STACK_ASLIGNMENT);
+        println!("\tstr {}, [sp, #-{}]!", register, STACK_ALIGNMENT);
     }
 
     fn generate_pop_register_from_stack(&self, register: &str) {
-        println!("\tldr {}, [sp], #{}", register, STACK_ASLIGNMENT);
+        println!("\tldr {}, [sp], #{}", register, STACK_ALIGNMENT);
     }
 }

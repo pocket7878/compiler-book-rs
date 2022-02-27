@@ -66,8 +66,8 @@ impl<'a> Tokenizer<'a> {
                 continue;
             }
 
-            if let Some(c) = self.try_consume_alphabetic_char() {
-                tokens.push(Token::new_ident(current_position, &c.to_string()));
+            if let Some(c) = self.try_consume_alphabetic_str() {
+                tokens.push(Token::new_ident(current_position, &c));
                 continue;
             }
 
@@ -117,20 +117,22 @@ impl<'a> Tokenizer<'a> {
         }
     }
 
-    fn try_consume_alphabetic_char(&mut self) -> Option<char> {
-        let first_char = self.input.chars().next();
-        if first_char.is_none() || !first_char.unwrap().is_alphabetic() {
-            None
-        } else {
-            self.input = &self.input[1..];
-            self.pos += 1;
-            Some(first_char.unwrap())
-        }
+    fn try_consume_alphabetic_str(&mut self) -> Option<String> {
+        let first_non_alphabetic = self
+            .input
+            .find(|c| !char::is_alphabetic(c))
+            .unwrap_or(self.input.len());
+        let (alphabetic_str, rest_input) = self.input.split_at(first_non_alphabetic);
+
+        self.input = rest_input;
+        self.pos += alphabetic_str.chars().count();
+        Some(alphabetic_str.to_owned())
     }
 }
 
 #[cfg(test)]
 mod tests {
+
     #[test]
     fn tokenize_single_digit_num() {
         let expr = "1";
@@ -138,7 +140,7 @@ mod tests {
         assert_eq!(token_list.peek().unwrap().kind, super::TokenKind::Num);
         assert_eq!(token_list.peek().unwrap().num.unwrap(), 1);
         token_list.next();
-        assert_eq!(token_list.peek().is_none(), true);
+        assert!(token_list.peek().is_none());
     }
 
     #[test]
@@ -148,7 +150,7 @@ mod tests {
         assert_eq!(token_list.peek().unwrap().kind, super::TokenKind::Num);
         assert_eq!(token_list.peek().unwrap().num.unwrap(), 1234);
         token_list.next();
-        assert_eq!(token_list.peek().is_none(), true);
+        assert!(token_list.peek().is_none());
     }
 
     #[test]
@@ -207,6 +209,18 @@ mod tests {
         let mut token_list = super::Tokenizer::new(expr).tokenize();
         assert_eq!(token_list.next().unwrap().kind, super::TokenKind::Ident);
         assert_eq!(token_list.next().unwrap().kind, super::TokenKind::Ident);
+    }
+
+    #[test]
+    fn tokenize_single_multi_char_ident() {
+        let expr = "foo bar";
+        let mut token_list = super::Tokenizer::new(expr).tokenize();
+        let first_ident = token_list.next().unwrap();
+        let second_ident = token_list.next().unwrap();
+        assert_eq!(first_ident.kind, super::TokenKind::Ident);
+        assert_eq!(first_ident.str.unwrap(), "foo");
+        assert_eq!(second_ident.kind, super::TokenKind::Ident);
+        assert_eq!(second_ident.str.unwrap(), "bar");
     }
 
     #[test]

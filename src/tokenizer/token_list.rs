@@ -58,15 +58,14 @@ impl<'a> TokenList<'a> {
 
     pub fn expect_kind(&mut self, kind: &TokenKind) {
         let next = self.peek();
-        if next.is_none() {
-            self.exit_with_unexpected_eof(&format!("Expected {:?}", kind));
-        } else {
-            let next = next.unwrap();
+        if let Some(next) = next {
             if next.kind == *kind {
                 self.advance();
             } else {
                 self.exit_with_unexpected_token(next.position, &format!("Expected {:?}", kind));
             }
+        } else {
+            self.exit_with_unexpected_eof(&format!("Expected {:?}", kind));
         }
     }
 

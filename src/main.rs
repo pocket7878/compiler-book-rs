@@ -1,9 +1,9 @@
-mod ast;
 mod codegen;
 mod error_report;
+mod lexer;
 mod tokenizer;
 
-use crate::{ast::Lexer, tokenizer::Tokenizer};
+use crate::{lexer::Lexer, tokenizer::Tokenizer};
 use std::env;
 
 fn main() {

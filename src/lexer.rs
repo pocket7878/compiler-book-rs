@@ -1,70 +1,26 @@
+mod local_var_env;
+mod node;
+
+pub use node::{Node, NodeKind};
+
 use crate::tokenizer::{TokenKind, TokenList};
 
-#[derive(PartialEq, Eq, Debug)]
-pub enum NodeKind {
-    Add,
-    Sub,
-    Mul,
-    Div,
-    Equal,
-    NotEqual,
-    Assign,
-    LessThan,
-    LessThanOrEqual,
-    LocalVar,
-    Num,
-}
-
-#[derive(PartialEq, Eq, Debug)]
-pub struct Node {
-    pub kind: NodeKind,
-    pub lhs: Option<Box<Node>>,
-    pub rhs: Option<Box<Node>>,
-    pub val: Option<i32>,    // Only for Num NodeKind
-    pub offset: Option<i32>, // Only for LocalVar NodeKind
-}
-
-impl Node {
-    pub fn new_bin_op_node(kind: NodeKind, lhs: Box<Node>, rhs: Box<Node>) -> Self {
-        Self {
-            kind,
-            lhs: Some(lhs),
-            rhs: Some(rhs),
-            val: None,
-            offset: None,
-        }
-    }
-
-    pub fn new_num(val: i32) -> Self {
-        Self {
-            kind: NodeKind::Num,
-            lhs: None,
-            rhs: None,
-            val: Some(val),
-            offset: None,
-        }
-    }
-
-    pub fn new_local_var(offset: i32) -> Self {
-        Self {
-            kind: NodeKind::LocalVar,
-            lhs: None,
-            rhs: None,
-            val: None,
-            offset: Some(offset),
-        }
-    }
-}
+use self::local_var_env::LocalVarEnvironment;
 
 pub struct Lexer<'a> {
     token_list: TokenList<'a>,
+    local_var_environment: LocalVarEnvironment,
 }
 
 impl<'a> Lexer<'a> {
     pub fn new(token_list: TokenList<'a>) -> Lexer<'a> {
-        Self { token_list }
+        Self {
+            token_list,
+            local_var_environment: LocalVarEnvironment::new(),
+        }
     }
 
+    /* Lexing Programs */
     pub fn program(&mut self) -> Vec<Node> {
         let mut nodes = vec![];
         while !self.token_list.at_end() {
@@ -203,9 +159,13 @@ impl<'a> Lexer<'a> {
             self.token_list.expect_kind(&TokenKind::RParen);
             return node;
         } else if let Some(ident_tok) = self.token_list.try_consume(&TokenKind::Ident) {
-            let ident_char = ident_tok.str.unwrap().chars().next().unwrap();
-            let ident_char_ascii_index = ('a'..='z').position(|c| c == ident_char).unwrap() as i32;
-            return Node::new_local_var((ident_char_ascii_index + 1) * 16);
+            let ident_name = ident_tok.str.unwrap();
+            if let Some(offset) = self.local_var_environment.variable_offset(&ident_name) {
+                return Node::new_local_var(*offset);
+            } else {
+                let offset = self.local_var_environment.intern_new_variable(&ident_name);
+                return Node::new_local_var(offset);
+            }
         }
 
         let n = self.token_list.expect_num();

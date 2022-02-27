@@ -41,4 +41,8 @@ assert 0 '2!=2;'
 assert 42 'a = 42; a;'
 assert 21 'a = 5; b = 20; c = 4; a + b - c;'
 
+# 複数文字変数
+assert 42 'foo = 42; foo;'
+assert 21 'foo = 5; bar = 20; baz = 4; foo + bar - baz;'
+
 echo OK
