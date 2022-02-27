@@ -36,8 +36,7 @@ impl<'a> Tokenizer<'a> {
 
             let current_position = self.pos;
 
-            // Try tokenize syntax items
-            let reserved_tokens = vec![
+            let reserved_symbolic_tokens = vec![
                 ("<=", TokenKind::LessThanOrEqual),
                 (">=", TokenKind::GreaterThanOrEqual),
                 ("==", TokenKind::Equal),
@@ -53,10 +52,10 @@ impl<'a> Tokenizer<'a> {
                 (";", TokenKind::Semicolon),
                 ("=", TokenKind::Assign),
             ];
-            let consumed_syntax_item = reserved_tokens
+            let consumed_symbolic_token = reserved_symbolic_tokens
                 .into_iter()
                 .find(|(op, _)| self.try_consume(op));
-            if let Some((_, kind)) = consumed_syntax_item {
+            if let Some((_, kind)) = consumed_symbolic_token {
                 tokens.push(Token::new_syntax_item(current_position, kind));
                 continue;
             }
@@ -66,8 +65,13 @@ impl<'a> Tokenizer<'a> {
                 continue;
             }
 
-            if let Some(c) = self.try_consume_alphabetic_str() {
-                tokens.push(Token::new_ident(current_position, &c));
+            if let Some(c) = self.try_consume_alnum_or_underscore() {
+                // 予約語だったらこっちで処理する
+                if c == "return" {
+                    tokens.push(Token::new_syntax_item(current_position, TokenKind::Return));
+                } else {
+                    tokens.push(Token::new_ident(current_position, &c));
+                }
                 continue;
             }
 
@@ -115,6 +119,18 @@ impl<'a> Tokenizer<'a> {
             }
             Err(_) => None,
         }
+    }
+
+    fn try_consume_alnum_or_underscore(&mut self) -> Option<String> {
+        let first_non_alnum_or_underscore = self
+            .input
+            .find(|c| !(char::is_alphanumeric(c) || c == '_'))
+            .unwrap_or(self.input.len());
+        let (alphabetic_str, rest_input) = self.input.split_at(first_non_alnum_or_underscore);
+
+        self.input = rest_input;
+        self.pos += alphabetic_str.chars().count();
+        Some(alphabetic_str.to_owned())
     }
 
     fn try_consume_alphabetic_str(&mut self) -> Option<String> {
@@ -250,5 +266,24 @@ mod tests {
         // a;
         assert_eq!(token_list.next().unwrap().kind, super::TokenKind::Ident);
         assert_eq!(token_list.next().unwrap().kind, super::TokenKind::Semicolon);
+    }
+
+    #[test]
+    fn tokenize_return() {
+        let expr = "return 42;";
+        let mut token_list = super::Tokenizer::new(expr).tokenize();
+        assert_eq!(token_list.next().unwrap().kind, super::TokenKind::Return);
+        assert_eq!(token_list.next().unwrap().kind, super::TokenKind::Num);
+        assert_eq!(token_list.next().unwrap().kind, super::TokenKind::Semicolon);
+    }
+
+    #[test]
+    fn correctly_tokenize_return_like_local_var() {
+        let expr = "return_with_suffix prefixed_return return42 return";
+        let mut token_list = super::Tokenizer::new(expr).tokenize();
+        assert_eq!(token_list.next().unwrap().kind, super::TokenKind::Ident);
+        assert_eq!(token_list.next().unwrap().kind, super::TokenKind::Ident);
+        assert_eq!(token_list.next().unwrap().kind, super::TokenKind::Ident);
+        assert_eq!(token_list.next().unwrap().kind, super::TokenKind::Return);
     }
 }
