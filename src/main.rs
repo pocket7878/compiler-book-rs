@@ -15,7 +15,7 @@ fn main() {
 
     let program = args[1].clone();
     let token_list = Tokenizer::new(&program).tokenize();
-    let program_node = Lexer::new(token_list).expr();
+    let program_node = Lexer::new(token_list).program();
     let code_generator = codegen::CodeGenerator::new(program_node);
     code_generator.generate();
 }

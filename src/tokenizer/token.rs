@@ -12,9 +12,10 @@ pub enum TokenKind {
     LessThanOrEqual,
     GreaterThan,
     GreaterThanOrEqual,
+    Assign,
     Equal,
-    Semicolon,
     NotEqual,
+    Semicolon,
 }
 
 #[derive(PartialEq, Eq, Debug, Clone)]

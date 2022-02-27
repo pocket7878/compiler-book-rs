@@ -51,6 +51,7 @@ impl<'a> Tokenizer<'a> {
                 ("(", TokenKind::LParen),
                 (")", TokenKind::RParen),
                 (";", TokenKind::Semicolon),
+                ("=", TokenKind::Assign),
             ];
             let consumed_syntax_item = reserved_tokens
                 .into_iter()
@@ -212,6 +213,28 @@ mod tests {
     fn tokenize_semicolon() {
         let expr = ";";
         let mut token_list = super::Tokenizer::new(expr).tokenize();
+        assert_eq!(token_list.next().unwrap().kind, super::TokenKind::Semicolon);
+    }
+
+    #[test]
+    fn tokenize_equal_assign() {
+        let expr = "===";
+        let mut token_list = super::Tokenizer::new(expr).tokenize();
+        assert_eq!(token_list.next().unwrap().kind, super::TokenKind::Equal);
+        assert_eq!(token_list.next().unwrap().kind, super::TokenKind::Assign);
+    }
+
+    #[test]
+    fn tokenize_program() {
+        let expr = "a = 42; a;";
+        let mut token_list = super::Tokenizer::new(expr).tokenize();
+        // a = 42;
+        assert_eq!(token_list.next().unwrap().kind, super::TokenKind::Ident);
+        assert_eq!(token_list.next().unwrap().kind, super::TokenKind::Assign);
+        assert_eq!(token_list.next().unwrap().kind, super::TokenKind::Num);
+        assert_eq!(token_list.next().unwrap().kind, super::TokenKind::Semicolon);
+        // a;
+        assert_eq!(token_list.next().unwrap().kind, super::TokenKind::Ident);
         assert_eq!(token_list.next().unwrap().kind, super::TokenKind::Semicolon);
     }
 }

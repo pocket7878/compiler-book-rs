@@ -30,6 +30,10 @@ impl<'a> TokenList<'a> {
         }
     }
 
+    pub fn at_end(&self) -> bool {
+        self.pos >= self.tokens.len()
+    }
+
     pub fn peek(&self) -> Option<Token> {
         if self.pos < self.tokens.len() {
             Some(self.tokens[self.pos].clone())
@@ -38,17 +42,16 @@ impl<'a> TokenList<'a> {
         }
     }
 
-    pub fn try_consume(&mut self, kind: &TokenKind) -> bool {
+    pub fn try_consume(&mut self, kind: &TokenKind) -> Option<Token> {
         let next = self.peek();
         if next.is_none() {
-            false
+            None
         } else {
             let next = next.unwrap();
             if next.kind == *kind {
-                self.advance();
-                true
+                self.next()
             } else {
-                false
+                None
             }
         }
     }

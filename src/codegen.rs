@@ -1,32 +1,56 @@
 use crate::ast::{Node, NodeKind};
 
+const FRAME_POINTER_REGISTER: &str = "x29";
+const STACK_ASLIGNMENT: i32 = 16;
+
 pub struct CodeGenerator {
-    pub program: Node,
+    pub program: Vec<Node>,
 }
 
 impl CodeGenerator {
-    pub fn new(program: Node) -> Self {
+    pub fn new(program: Vec<Node>) -> Self {
         Self { program }
     }
 
     pub fn generate(&self) {
         self.generate_program_opening();
-        self.gen(&self.program);
+        for stmt in self.program.iter() {
+            self.gen(stmt);
+            self.generate_pop_register_from_stack("x0");
+        }
         self.generate_program_ending();
     }
 
-    pub fn gen(&self, node: &Node) {
-        if node.kind == NodeKind::Num {
-            println!("\tmov x2, #{}", node.val.unwrap(),);
-            println!("\tstr x2, [sp, #-16]!");
-            return;
+    fn gen(&self, node: &Node) {
+        match node.kind {
+            NodeKind::Num => {
+                self.generate_num(node);
+                return;
+            }
+            NodeKind::LocalVar => {
+                self.generate_local_var(node);
+                self.generate_pop_register_from_stack("x0");
+                println!("\tldr x0, [x0]");
+                self.generate_push_register_to_stack("x0");
+                return;
+            }
+            NodeKind::Assign => {
+                self.generate_local_var(node.lhs.as_ref().unwrap());
+                self.gen(node.rhs.as_ref().unwrap());
+                self.generate_pop_register_from_stack("x1");
+                self.generate_pop_register_from_stack("x0");
+                println!("\tstr x1, [x0]");
+                self.generate_push_register_to_stack("x1");
+                return;
+            }
+            _ => { /* Nothing to DO */ }
         }
 
         self.gen(node.lhs.as_ref().unwrap());
         self.gen(node.rhs.as_ref().unwrap());
 
-        println!("\tldr x1, [sp], 16");
-        println!("\tldr x0, [sp], 16");
+        self.generate_pop_register_from_stack("x1");
+        self.generate_pop_register_from_stack("x0");
 
         match node.kind {
             NodeKind::Add => println!("\tadd x0, x0, x1"),
@@ -49,20 +73,42 @@ impl CodeGenerator {
                 println!("\tcmp x0, x1");
                 println!("\tcset x0, LE");
             }
-            _ => unreachable!(),
+            _ => { /* Ignore */ }
         }
 
-        println!("\tstr x0, [sp, #-16]!");
+        self.generate_push_register_to_stack("x0");
+    }
+
+    fn generate_num(&self, node: &Node) {
+        println!("\tmov x2, #{}", node.val.unwrap());
+        self.generate_push_register_to_stack("x2");
+    }
+
+    fn generate_local_var(&self, node: &Node) {
+        println!("\tmov x0, {}", FRAME_POINTER_REGISTER);
+        println!("\tsub x0, x0, #{}", node.offset.unwrap());
+        self.generate_push_register_to_stack("x0");
     }
 
     fn generate_program_opening(&self) {
         println!(".globl	_main");
         println!("_main:");
-        println!("\tmov x0, xzr");
+        // Allocate a-z variable addresses in stack.
+        println!("\tmov {}, sp", FRAME_POINTER_REGISTER);
+        println!("\tsub sp, sp, #{}", STACK_ASLIGNMENT * 26);
     }
 
     fn generate_program_ending(&self) {
-        println!("\tldr x0, [sp], #16");
+        println!("\tmov sp, {}", FRAME_POINTER_REGISTER);
+        self.generate_pop_register_from_stack(FRAME_POINTER_REGISTER);
         println!("\tret");
+    }
+
+    fn generate_push_register_to_stack(&self, register: &str) {
+        println!("\tstr {}, [sp, #-{}]!", register, STACK_ASLIGNMENT);
+    }
+
+    fn generate_pop_register_from_stack(&self, register: &str) {
+        println!("\tldr {}, [sp], #{}", register, STACK_ASLIGNMENT);
     }
 }
