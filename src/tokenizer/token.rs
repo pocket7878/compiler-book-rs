@@ -13,6 +13,7 @@ pub enum TokenKind {
     GreaterThan,
     GreaterThanOrEqual,
     Equal,
+    Semicolon,
     NotEqual,
 }
 

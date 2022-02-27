@@ -50,6 +50,7 @@ impl<'a> Tokenizer<'a> {
                 ("/", TokenKind::Div),
                 ("(", TokenKind::LParen),
                 (")", TokenKind::RParen),
+                (";", TokenKind::Semicolon),
             ];
             let consumed_syntax_item = reserved_tokens
                 .into_iter()
@@ -205,5 +206,12 @@ mod tests {
         let mut token_list = super::Tokenizer::new(expr).tokenize();
         assert_eq!(token_list.next().unwrap().kind, super::TokenKind::Ident);
         assert_eq!(token_list.next().unwrap().kind, super::TokenKind::Ident);
+    }
+
+    #[test]
+    fn tokenize_semicolon() {
+        let expr = ";";
+        let mut token_list = super::Tokenizer::new(expr).tokenize();
+        assert_eq!(token_list.next().unwrap().kind, super::TokenKind::Semicolon);
     }
 }
