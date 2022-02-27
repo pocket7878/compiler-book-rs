@@ -7,12 +7,27 @@ pub enum TokenKind {
     Num,
     LParen,
     RParen,
+    LessThan,
+    LessThanOrEqual,
+    GreaterThan,
+    GreaterThanOrEqual,
+    Equal,
+    NotEqual,
 }
 
 impl TokenKind {
     fn is_op(&self) -> bool {
         match self {
-            TokenKind::Plus | TokenKind::Minus | TokenKind::Mul | TokenKind::Div => true,
+            TokenKind::Plus
+            | TokenKind::Minus
+            | TokenKind::Mul
+            | TokenKind::Div
+            | TokenKind::LessThan
+            | TokenKind::GreaterThan
+            | TokenKind::GreaterThanOrEqual
+            | TokenKind::Equal
+            | TokenKind::NotEqual
+            | TokenKind::LessThanOrEqual => true,
             _ => false,
         }
     }
@@ -26,28 +41,12 @@ pub struct Token {
 }
 
 impl Token {
-    pub fn new_op(position: usize, kind: TokenKind) -> Self {
-        if !kind.is_op() {
-            panic!("{:?} is not an operator TokenKind", kind);
-        }
-
+    pub fn new_syntax_item(position: usize, kind: TokenKind) -> Self {
         Self {
             position,
             kind,
             num: None,
         }
-    }
-
-    pub fn new_paren(position: usize, kind: TokenKind) -> Self {
-        if kind == TokenKind::LParen || kind == TokenKind::RParen {
-            return Self {
-                position,
-                kind,
-                num: None,
-            };
-        }
-
-        panic!("{:?} is not an paren TokenKind", kind);
     }
 
     pub fn new_num(position: usize, num: i32) -> Self {

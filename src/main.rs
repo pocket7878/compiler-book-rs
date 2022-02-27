@@ -3,11 +3,8 @@ mod codegen;
 mod error_report;
 mod tokenizer;
 
-use std::env;
-
-use ast::{Node, NodeKind};
-
 use crate::{ast::Lexer, tokenizer::Tokenizer};
+use std::env;
 
 fn main() {
     let args = env::args().collect::<Vec<_>>();

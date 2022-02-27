@@ -33,6 +33,22 @@ impl CodeGenerator {
             NodeKind::Sub => println!("\tsub x0, x0, x1"),
             NodeKind::Mul => println!("\tmul x0, x0, x1"),
             NodeKind::Div => println!("\tsdiv x0, x0, x1"),
+            NodeKind::Equal => {
+                println!("\tcmp x0, x1");
+                println!("\tcset x0, EQ");
+            }
+            NodeKind::NotEqual => {
+                println!("\tcmp x0, x1");
+                println!("\tcset x0, NE");
+            }
+            NodeKind::LessThan => {
+                println!("\tcmp x0, x1");
+                println!("\tcset x0, LT");
+            }
+            NodeKind::LessThanOrEqual => {
+                println!("\tcmp x0, x1");
+                println!("\tcset x0, LE");
+            }
             _ => unreachable!(),
         }
 
