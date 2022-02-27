@@ -132,18 +132,6 @@ impl<'a> Tokenizer<'a> {
         self.pos += alphabetic_str.chars().count();
         Some(alphabetic_str.to_owned())
     }
-
-    fn try_consume_alphabetic_str(&mut self) -> Option<String> {
-        let first_non_alphabetic = self
-            .input
-            .find(|c| !char::is_alphabetic(c))
-            .unwrap_or(self.input.len());
-        let (alphabetic_str, rest_input) = self.input.split_at(first_non_alphabetic);
-
-        self.input = rest_input;
-        self.pos += alphabetic_str.chars().count();
-        Some(alphabetic_str.to_owned())
-    }
 }
 
 #[cfg(test)]

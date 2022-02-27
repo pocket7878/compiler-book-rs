@@ -31,7 +31,13 @@ impl<'a> Lexer<'a> {
     }
 
     fn stmt(&mut self) -> Node {
-        let node = self.expr();
+        let node = if self.token_list.try_consume(&TokenKind::Return).is_some() {
+            Node::new_return(Box::new(self.expr()))
+        } else {
+            self.expr()
+        };
+
+        // Error if semicolon is not continued;
         self.token_list.expect_kind(&TokenKind::Semicolon);
 
         node

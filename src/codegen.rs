@@ -43,6 +43,11 @@ impl CodeGenerator {
                 self.generate_push_register_to_stack("x1");
                 return;
             }
+            NodeKind::Return => {
+                self.gen(node.lhs.as_ref().unwrap());
+                self.generate_return();
+                return;
+            }
             _ => { /* Nothing to DO */ }
         }
 
@@ -95,6 +100,13 @@ impl CodeGenerator {
         println!("_main:");
         println!("\tmov {}, sp", FRAME_POINTER_REGISTER);
         println!("\tsub sp, sp, #{}", STACK_ALIGNMENT * 26);
+    }
+
+    fn generate_return(&self) {
+        self.generate_push_register_to_stack("x0");
+        println!("\tmov sp, {}", FRAME_POINTER_REGISTER);
+        self.generate_pop_register_from_stack(FRAME_POINTER_REGISTER);
+        println!("\tret");
     }
 
     fn generate_program_ending(&self) {
