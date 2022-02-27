@@ -44,15 +44,14 @@ impl<'a> TokenList<'a> {
 
     pub fn try_consume(&mut self, kind: &TokenKind) -> Option<Token> {
         let next = self.peek();
-        if next.is_none() {
-            None
-        } else {
-            let next = next.unwrap();
+        if let Some(next) = next {
             if next.kind == *kind {
                 self.next()
             } else {
                 None
             }
+        } else {
+            None
         }
     }
 

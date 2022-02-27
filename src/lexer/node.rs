@@ -11,6 +11,7 @@ pub enum NodeKind {
     LessThanOrEqual,
     LocalVar,
     Num,
+    Return,
 }
 
 #[derive(PartialEq, Eq, Debug)]
@@ -50,6 +51,16 @@ impl Node {
             rhs: None,
             val: None,
             offset: Some(offset),
+        }
+    }
+
+    pub fn new_return(expr: Box<Node>) -> Self {
+        Self {
+            kind: NodeKind::Return,
+            lhs: Some(expr),
+            rhs: None,
+            val: None,
+            offset: None,
         }
     }
 }

@@ -45,4 +45,8 @@ assert 21 'a = 5; b = 20; c = 4; a + b - c;'
 assert 42 'foo = 42; foo;'
 assert 21 'foo = 5; bar = 20; baz = 4; foo + bar - baz;'
 
+# return
+assert 42 'foo = 42; return foo;'
+assert 5 'a = 5; return a; b = 20;'
+
 echo OK
