@@ -5,6 +5,7 @@ pub enum TokenKind {
     Mul,
     Div,
     Num,
+    Ident,
     LParen,
     RParen,
     LessThan,
@@ -15,29 +16,12 @@ pub enum TokenKind {
     NotEqual,
 }
 
-impl TokenKind {
-    fn is_op(&self) -> bool {
-        match self {
-            TokenKind::Plus
-            | TokenKind::Minus
-            | TokenKind::Mul
-            | TokenKind::Div
-            | TokenKind::LessThan
-            | TokenKind::GreaterThan
-            | TokenKind::GreaterThanOrEqual
-            | TokenKind::Equal
-            | TokenKind::NotEqual
-            | TokenKind::LessThanOrEqual => true,
-            _ => false,
-        }
-    }
-}
-
 #[derive(PartialEq, Eq, Debug, Clone)]
 pub struct Token {
     pub position: usize,
     pub kind: TokenKind,
-    pub num: Option<i32>, // Number
+    pub num: Option<i32>,    // Number
+    pub str: Option<String>, // Identifier
 }
 
 impl Token {
@@ -46,6 +30,7 @@ impl Token {
             position,
             kind,
             num: None,
+            str: None,
         }
     }
 
@@ -54,6 +39,16 @@ impl Token {
             position,
             kind: TokenKind::Num,
             num: Some(num),
+            str: None,
+        }
+    }
+
+    pub fn new_ident(position: usize, str: &str) -> Self {
+        Self {
+            position,
+            kind: TokenKind::Ident,
+            num: None,
+            str: Some(str.to_string()),
         }
     }
 }

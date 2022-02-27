@@ -64,6 +64,11 @@ impl<'a> Tokenizer<'a> {
                 continue;
             }
 
+            if let Some(c) = self.try_consume_alphabetic_char() {
+                tokens.push(Token::new_ident(current_position, &c.to_string()));
+                continue;
+            }
+
             // 単純化のため、トークン化できなかったら即終了させる
             error_at(self.original_input, current_position, "Unrecognized token");
             exit(1)
@@ -107,6 +112,17 @@ impl<'a> Tokenizer<'a> {
                 Some(num)
             }
             Err(_) => None,
+        }
+    }
+
+    fn try_consume_alphabetic_char(&mut self) -> Option<char> {
+        let first_char = self.input.chars().next();
+        if first_char.is_none() || !first_char.unwrap().is_alphabetic() {
+            None
+        } else {
+            self.input = &self.input[1..];
+            self.pos += 1;
+            Some(first_char.unwrap())
         }
     }
 }
@@ -181,5 +197,13 @@ mod tests {
             token_list.next().unwrap().kind,
             super::TokenKind::GreaterThan
         );
+    }
+
+    #[test]
+    fn tokenize_single_char_ident() {
+        let expr = "a b";
+        let mut token_list = super::Tokenizer::new(expr).tokenize();
+        assert_eq!(token_list.next().unwrap().kind, super::TokenKind::Ident);
+        assert_eq!(token_list.next().unwrap().kind, super::TokenKind::Ident);
     }
 }
