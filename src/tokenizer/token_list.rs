@@ -30,6 +30,10 @@ impl<'a> TokenList<'a> {
         }
     }
 
+    pub fn at_end(&self) -> bool {
+        self.pos >= self.tokens.len()
+    }
+
     pub fn peek(&self) -> Option<Token> {
         if self.pos < self.tokens.len() {
             Some(self.tokens[self.pos].clone())
@@ -38,32 +42,30 @@ impl<'a> TokenList<'a> {
         }
     }
 
-    pub fn try_consume(&mut self, kind: &TokenKind) -> bool {
+    pub fn try_consume(&mut self, kind: &TokenKind) -> Option<Token> {
         let next = self.peek();
         if next.is_none() {
-            false
+            None
         } else {
             let next = next.unwrap();
             if next.kind == *kind {
-                self.advance();
-                true
+                self.next()
             } else {
-                false
+                None
             }
         }
     }
 
     pub fn expect_kind(&mut self, kind: &TokenKind) {
         let next = self.peek();
-        if next.is_none() {
-            self.exit_with_unexpected_eof(&format!("Expected {:?}", kind));
-        } else {
-            let next = next.unwrap();
+        if let Some(next) = next {
             if next.kind == *kind {
                 self.advance();
             } else {
                 self.exit_with_unexpected_token(next.position, &format!("Expected {:?}", kind));
             }
+        } else {
+            self.exit_with_unexpected_eof(&format!("Expected {:?}", kind));
         }
     }
 
