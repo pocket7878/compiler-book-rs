@@ -35,30 +35,30 @@ impl<'a> Tokenizer<'a> {
             }
 
             let current_position = self.pos;
-            if self.try_consume('+') {
-                tokens.push(Token::new_op(current_position, TokenKind::Plus));
+
+            // Try tokenize syntax items
+            let reserved_tokens = vec![
+                ("<=", TokenKind::LessThanOrEqual),
+                (">=", TokenKind::GreaterThanOrEqual),
+                ("==", TokenKind::Equal),
+                ("!=", TokenKind::NotEqual),
+                (">", TokenKind::GreaterThan),
+                ("<", TokenKind::LessThan),
+                ("+", TokenKind::Plus),
+                ("-", TokenKind::Minus),
+                ("*", TokenKind::Mul),
+                ("/", TokenKind::Div),
+                ("(", TokenKind::LParen),
+                (")", TokenKind::RParen),
+            ];
+            let consumed_syntax_item = reserved_tokens
+                .into_iter()
+                .find(|(op, _)| self.try_consume(op));
+            if let Some((_, kind)) = consumed_syntax_item {
+                tokens.push(Token::new_syntax_item(current_position, kind));
                 continue;
             }
-            if self.try_consume('-') {
-                tokens.push(Token::new_op(current_position, TokenKind::Minus));
-                continue;
-            }
-            if self.try_consume('*') {
-                tokens.push(Token::new_op(current_position, TokenKind::Mul));
-                continue;
-            }
-            if self.try_consume('/') {
-                tokens.push(Token::new_op(current_position, TokenKind::Div));
-                continue;
-            }
-            if self.try_consume('(') {
-                tokens.push(Token::new_paren(current_position, TokenKind::LParen));
-                continue;
-            }
-            if self.try_consume(')') {
-                tokens.push(Token::new_paren(current_position, TokenKind::RParen));
-                continue;
-            }
+
             if let Some(num) = self.try_consume_digits() {
                 tokens.push(Token::new_num(current_position, num));
                 continue;
@@ -83,10 +83,10 @@ impl<'a> Tokenizer<'a> {
         self.input = chars.as_str();
     }
 
-    fn try_consume(&mut self, c: char) -> bool {
-        if self.input.starts_with(c) {
-            self.pos += 1;
-            self.input = &self.input[1..];
+    fn try_consume(&mut self, str: &str) -> bool {
+        if self.input.starts_with(&str) {
+            self.pos += str.chars().count();
+            self.input = &self.input[str.chars().count()..];
             true
         } else {
             false
@@ -160,5 +160,26 @@ mod tests {
         assert_eq!(token_list.next().unwrap().kind, super::TokenKind::Num);
         assert_eq!(token_list.next().unwrap().kind, super::TokenKind::Minus);
         assert_eq!(token_list.next().unwrap().kind, super::TokenKind::Num);
+    }
+
+    #[test]
+    fn tokenize_multi_length_operators() {
+        let expr = "<=>===!=<>";
+        let mut token_list = super::Tokenizer::new(expr).tokenize();
+        assert_eq!(
+            token_list.next().unwrap().kind,
+            super::TokenKind::LessThanOrEqual
+        );
+        assert_eq!(
+            token_list.next().unwrap().kind,
+            super::TokenKind::GreaterThanOrEqual
+        );
+        assert_eq!(token_list.next().unwrap().kind, super::TokenKind::Equal);
+        assert_eq!(token_list.next().unwrap().kind, super::TokenKind::NotEqual);
+        assert_eq!(token_list.next().unwrap().kind, super::TokenKind::LessThan);
+        assert_eq!(
+            token_list.next().unwrap().kind,
+            super::TokenKind::GreaterThan
+        );
     }
 }

@@ -6,6 +6,10 @@ pub enum NodeKind {
     Sub,
     Mul,
     Div,
+    Equal,
+    NotEqual,
+    LessThan,
+    LessThanOrEqual,
     Num,
 }
 
@@ -47,6 +51,66 @@ impl<'a> Lexer<'a> {
     }
 
     pub fn expr(&mut self) -> Node {
+        self.equality()
+    }
+
+    fn equality(&mut self) -> Node {
+        let mut node = self.relational();
+
+        loop {
+            if self.token_list.try_consume(&TokenKind::Equal) {
+                node = Node::new_bin_op_node(
+                    NodeKind::Equal,
+                    Box::new(node),
+                    Box::new(self.relational()),
+                );
+            } else if self.token_list.try_consume(&TokenKind::NotEqual) {
+                node = Node::new_bin_op_node(
+                    NodeKind::NotEqual,
+                    Box::new(node),
+                    Box::new(self.relational()),
+                );
+            } else {
+                return node;
+            }
+        }
+    }
+
+    fn relational(&mut self) -> Node {
+        let mut node = self.add();
+
+        loop {
+            if self.token_list.try_consume(&TokenKind::LessThan) {
+                node = Node::new_bin_op_node(
+                    NodeKind::LessThan,
+                    Box::new(node),
+                    Box::new(self.relational()),
+                );
+            } else if self.token_list.try_consume(&TokenKind::LessThanOrEqual) {
+                node = Node::new_bin_op_node(
+                    NodeKind::LessThanOrEqual,
+                    Box::new(node),
+                    Box::new(self.relational()),
+                );
+            } else if self.token_list.try_consume(&TokenKind::GreaterThan) {
+                node = Node::new_bin_op_node(
+                    NodeKind::LessThan,
+                    Box::new(self.relational()),
+                    Box::new(node),
+                );
+            } else if self.token_list.try_consume(&TokenKind::GreaterThanOrEqual) {
+                node = Node::new_bin_op_node(
+                    NodeKind::LessThanOrEqual,
+                    Box::new(self.relational()),
+                    Box::new(node),
+                );
+            } else {
+                return node;
+            }
+        }
+    }
+
+    fn add(&mut self) -> Node {
         let mut node = self.mul();
 
         loop {
