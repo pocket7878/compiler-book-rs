@@ -12,6 +12,7 @@ pub enum NodeKind {
     LocalVar,
     Num,
     Return,
+    If,
 }
 
 #[derive(PartialEq, Eq, Debug)]
@@ -19,8 +20,9 @@ pub struct Node {
     pub kind: NodeKind,
     pub lhs: Option<Box<Node>>,
     pub rhs: Option<Box<Node>>,
-    pub val: Option<i32>,    // Only for Num NodeKind
-    pub offset: Option<i32>, // Only for LocalVar NodeKind
+    pub else_body: Option<Box<Node>>, // Only for If
+    pub val: Option<i32>,             // Only for Num NodeKind
+    pub offset: Option<i32>,          // Only for LocalVar NodeKind
 }
 
 impl Node {
@@ -30,6 +32,7 @@ impl Node {
             lhs: Some(lhs),
             rhs: Some(rhs),
             val: None,
+            else_body: None,
             offset: None,
         }
     }
@@ -39,6 +42,7 @@ impl Node {
             kind: NodeKind::Num,
             lhs: None,
             rhs: None,
+            else_body: None,
             val: Some(val),
             offset: None,
         }
@@ -50,6 +54,7 @@ impl Node {
             lhs: None,
             rhs: None,
             val: None,
+            else_body: None,
             offset: Some(offset),
         }
     }
@@ -59,6 +64,22 @@ impl Node {
             kind: NodeKind::Return,
             lhs: Some(expr),
             rhs: None,
+            val: None,
+            else_body: None,
+            offset: None,
+        }
+    }
+
+    pub fn new_if(
+        condition: Box<Node>,
+        then_body: Box<Node>,
+        else_body: Option<Box<Node>>,
+    ) -> Self {
+        Self {
+            kind: NodeKind::If,
+            lhs: Some(condition),
+            rhs: Some(then_body),
+            else_body: else_body,
             val: None,
             offset: None,
         }

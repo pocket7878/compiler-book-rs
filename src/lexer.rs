@@ -33,6 +33,23 @@ impl<'a> Lexer<'a> {
     fn stmt(&mut self) -> Node {
         let node = if self.token_list.try_consume(&TokenKind::Return).is_some() {
             Node::new_return(Box::new(self.expr()))
+        } else if self.token_list.try_consume(&TokenKind::If).is_some() {
+            self.token_list.expect_kind(&TokenKind::LParen);
+            let condition = self.expr();
+            self.token_list.expect_kind(&TokenKind::RParen);
+            let then_body = self.stmt();
+
+            if self.token_list.try_consume(&TokenKind::Else).is_some() {
+                let else_body = self.stmt();
+
+                return Node::new_if(
+                    Box::new(condition),
+                    Box::new(then_body),
+                    Some(Box::new(else_body)),
+                );
+            }
+
+            return Node::new_if(Box::new(condition), Box::new(then_body), None);
         } else {
             self.expr()
         };
