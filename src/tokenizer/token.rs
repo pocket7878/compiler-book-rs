@@ -17,6 +17,8 @@ pub enum TokenKind {
     NotEqual,
     Semicolon,
     Return,
+    If,
+    Else,
 }
 
 #[derive(PartialEq, Eq, Debug, Clone)]

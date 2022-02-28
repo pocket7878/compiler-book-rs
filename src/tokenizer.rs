@@ -66,9 +66,14 @@ impl<'a> Tokenizer<'a> {
             }
 
             if let Some(c) = self.try_consume_alnum_or_underscore() {
-                // 予約語だったらこっちで処理する
-                if c == "return" {
-                    tokens.push(Token::new_syntax_item(current_position, TokenKind::Return));
+                let reserved_identifiers = vec![
+                    ("if", TokenKind::If),
+                    ("else", TokenKind::Else),
+                    ("return", TokenKind::Return),
+                ];
+                let consumed_identifier = reserved_identifiers.into_iter().find(|(id, _)| c == *id);
+                if let Some((_, kind)) = consumed_identifier {
+                    tokens.push(Token::new_syntax_item(current_position, kind));
                 } else {
                     tokens.push(Token::new_ident(current_position, &c));
                 }
@@ -273,5 +278,23 @@ mod tests {
         assert_eq!(token_list.next().unwrap().kind, super::TokenKind::Ident);
         assert_eq!(token_list.next().unwrap().kind, super::TokenKind::Ident);
         assert_eq!(token_list.next().unwrap().kind, super::TokenKind::Return);
+    }
+
+    #[test]
+    fn tokenize_if() {
+        let expr = "prefixed_if if_with_suffix if";
+        let mut token_list = super::Tokenizer::new(expr).tokenize();
+        assert_eq!(token_list.next().unwrap().kind, super::TokenKind::Ident);
+        assert_eq!(token_list.next().unwrap().kind, super::TokenKind::Ident);
+        assert_eq!(token_list.next().unwrap().kind, super::TokenKind::If);
+    }
+
+    #[test]
+    fn tokenize_else() {
+        let expr = "prefixed_else else_with_suffix else";
+        let mut token_list = super::Tokenizer::new(expr).tokenize();
+        assert_eq!(token_list.next().unwrap().kind, super::TokenKind::Ident);
+        assert_eq!(token_list.next().unwrap().kind, super::TokenKind::Ident);
+        assert_eq!(token_list.next().unwrap().kind, super::TokenKind::Else);
     }
 }
