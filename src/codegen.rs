@@ -84,6 +84,17 @@ impl CodeGenerator {
                 println!(".Lend0:");
                 return;
             }
+            NodeKind::While => {
+                println!(".Lbegin0:");
+                self.gen(node.lhs.as_ref().unwrap());
+                self.generate_pop_register_from_stack("x0");
+                println!("\tcmp x0, #0");
+                println!("\tb.eq .Lend0");
+                self.gen(node.rhs.as_ref().unwrap());
+                println!("\tb .Lbegin0");
+                println!(".Lend0:");
+                return;
+            }
             _ => { /* Nothing to DO */ }
         }
 

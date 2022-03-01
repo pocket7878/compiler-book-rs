@@ -31,8 +31,11 @@ impl<'a> Lexer<'a> {
     }
 
     fn stmt(&mut self) -> Node {
-        let node = if self.token_list.try_consume(&TokenKind::Return).is_some() {
-            Node::new_return(Box::new(self.expr()))
+        if self.token_list.try_consume(&TokenKind::Return).is_some() {
+            let return_value = self.expr();
+            self.token_list.expect_kind(&TokenKind::Semicolon);
+
+            Node::new_return(Box::new(return_value))
         } else if self.token_list.try_consume(&TokenKind::If).is_some() {
             self.token_list.expect_kind(&TokenKind::LParen);
             let condition = self.expr();
@@ -49,15 +52,20 @@ impl<'a> Lexer<'a> {
                 );
             }
 
-            return Node::new_if(Box::new(condition), Box::new(then_body), None);
+            Node::new_if(Box::new(condition), Box::new(then_body), None)
+        } else if self.token_list.try_consume(&TokenKind::While).is_some() {
+            self.token_list.expect_kind(&TokenKind::LParen);
+            let condition = self.expr();
+            self.token_list.expect_kind(&TokenKind::RParen);
+            let body = self.stmt();
+
+            Node::new_while(Box::new(condition), Box::new(body))
         } else {
-            self.expr()
-        };
+            let expr = self.expr();
+            self.token_list.expect_kind(&TokenKind::Semicolon);
 
-        // Error if semicolon is not continued;
-        self.token_list.expect_kind(&TokenKind::Semicolon);
-
-        node
+            expr
+        }
     }
 
     fn expr(&mut self) -> Node {

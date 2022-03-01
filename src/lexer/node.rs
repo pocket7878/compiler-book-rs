@@ -13,6 +13,7 @@ pub enum NodeKind {
     Num,
     Return,
     If,
+    While,
 }
 
 #[derive(PartialEq, Eq, Debug)]
@@ -80,6 +81,17 @@ impl Node {
             lhs: Some(condition),
             rhs: Some(then_body),
             else_body: else_body,
+            val: None,
+            offset: None,
+        }
+    }
+
+    pub fn new_while(condition: Box<Node>, body: Box<Node>) -> Self {
+        Self {
+            kind: NodeKind::While,
+            lhs: Some(condition),
+            rhs: Some(body),
+            else_body: None,
             val: None,
             offset: None,
         }

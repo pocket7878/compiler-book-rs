@@ -55,4 +55,8 @@ assert 42 'a = 1; if (a != 10) return 42; return 24;'
 assert 42 'a = 10; if (a == 10) 42; else 24;'
 assert 24 'a = 10; if (a != 10) 42; else 24;'
 
+# while
+assert 10 'a = 0; while (a != 10) a = a + 1; a;'
+assert 1 'a = 0; while (a == 0) a = a + 1; a;'
+
 echo OK
