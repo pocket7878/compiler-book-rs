@@ -70,6 +70,7 @@ impl<'a> Tokenizer<'a> {
                     ("if", TokenKind::If),
                     ("else", TokenKind::Else),
                     ("return", TokenKind::Return),
+                    ("while", TokenKind::While),
                 ];
                 let consumed_identifier = reserved_identifiers.into_iter().find(|(id, _)| c == *id);
                 if let Some((_, kind)) = consumed_identifier {
@@ -296,5 +297,14 @@ mod tests {
         assert_eq!(token_list.next().unwrap().kind, super::TokenKind::Ident);
         assert_eq!(token_list.next().unwrap().kind, super::TokenKind::Ident);
         assert_eq!(token_list.next().unwrap().kind, super::TokenKind::Else);
+    }
+
+    #[test]
+    fn tokenize_while() {
+        let expr = "prefixed_while while_with_suffix while";
+        let mut token_list = super::Tokenizer::new(expr).tokenize();
+        assert_eq!(token_list.next().unwrap().kind, super::TokenKind::Ident);
+        assert_eq!(token_list.next().unwrap().kind, super::TokenKind::Ident);
+        assert_eq!(token_list.next().unwrap().kind, super::TokenKind::While);
     }
 }
