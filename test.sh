@@ -49,4 +49,10 @@ assert 21 'foo = 5; bar = 20; baz = 4; foo + bar - baz;'
 assert 42 'foo = 42; return foo;'
 assert 5 'a = 5; return a; b = 20;'
 
+# if else
+assert 42 'a = 10; if (a == 10) 42;'
+assert 42 'a = 1; if (a != 10) return 42; return 24;'
+assert 42 'a = 10; if (a == 10) 42; else 24;'
+assert 24 'a = 10; if (a != 10) 42; else 24;'
+
 echo OK
