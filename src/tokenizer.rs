@@ -71,6 +71,7 @@ impl<'a> Tokenizer<'a> {
                     ("else", TokenKind::Else),
                     ("return", TokenKind::Return),
                     ("while", TokenKind::While),
+                    ("for", TokenKind::For),
                 ];
                 let consumed_identifier = reserved_identifiers.into_iter().find(|(id, _)| c == *id);
                 if let Some((_, kind)) = consumed_identifier {
@@ -306,5 +307,14 @@ mod tests {
         assert_eq!(token_list.next().unwrap().kind, super::TokenKind::Ident);
         assert_eq!(token_list.next().unwrap().kind, super::TokenKind::Ident);
         assert_eq!(token_list.next().unwrap().kind, super::TokenKind::While);
+    }
+
+    #[test]
+    fn tokenize_for() {
+        let expr = "prefixed_for for_with_suffix for";
+        let mut token_list = super::Tokenizer::new(expr).tokenize();
+        assert_eq!(token_list.next().unwrap().kind, super::TokenKind::Ident);
+        assert_eq!(token_list.next().unwrap().kind, super::TokenKind::Ident);
+        assert_eq!(token_list.next().unwrap().kind, super::TokenKind::For);
     }
 }

@@ -20,6 +20,7 @@ pub enum TokenKind {
     If,
     Else,
     While,
+    For,
 }
 
 #[derive(PartialEq, Eq, Debug, Clone)]
