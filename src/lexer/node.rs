@@ -20,4 +20,10 @@ pub enum Node {
     Return(Box<Node>),
     If(Box<Node>, Box<Node>, Option<Box<Node>>),
     While(Box<Node>, Box<Node>),
+    For(
+        Option<Box<Node>>,
+        Option<Box<Node>>,
+        Option<Box<Node>>,
+        Box<Node>,
+    ),
 }

@@ -60,6 +60,37 @@ impl<'a> Lexer<'a> {
             let body = self.stmt();
 
             Node::While(Box::new(condition), Box::new(body))
+        } else if self.token_list.try_consume(&TokenKind::For).is_some() {
+            // forの後には、for (初期化; 条件; 更新) 本体
+            // ただし、初期化, 条件, 更新はどれも省略可能
+            self.token_list.expect_kind(&TokenKind::LParen);
+            let init = if self.token_list.try_consume(&TokenKind::Semicolon).is_some() {
+                None
+            } else {
+                let node = self.expr();
+                self.token_list.expect_kind(&TokenKind::Semicolon);
+
+                Some(Box::new(node))
+            };
+            let check = if self.token_list.try_consume(&TokenKind::Semicolon).is_some() {
+                None
+            } else {
+                let node = self.expr();
+                self.token_list.expect_kind(&TokenKind::Semicolon);
+
+                Some(Box::new(node))
+            };
+            let update = if self.token_list.try_consume(&TokenKind::RParen).is_some() {
+                None
+            } else {
+                let node = self.expr();
+                self.token_list.expect_kind(&TokenKind::RParen);
+
+                Some(Box::new(node))
+            };
+
+            let body = self.stmt();
+            Node::For(init, check, update, Box::new(body))
         } else {
             let expr = self.expr();
             self.token_list.expect_kind(&TokenKind::Semicolon);

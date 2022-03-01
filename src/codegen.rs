@@ -107,6 +107,28 @@ impl CodeGenerator {
                 println!(".Lend0:");
                 return;
             }
+            Node::For(init, check, update, body) => {
+                if let Some(init) = init {
+                    self.gen(init.as_ref());
+                }
+                println!(".Lbegin0:");
+                if let Some(check) = check {
+                    self.gen(check.as_ref());
+                } else {
+                    // checkがない場合は常にtrueにする
+                    self.gen(&Node::Num(1));
+                }
+                self.generate_pop_register_from_stack("x0");
+                println!("\tcmp x0, #0");
+                println!("\tb.eq .Lend0");
+                self.gen(body.as_ref());
+                if let Some(update) = update {
+                    self.gen(update.as_ref());
+                }
+                println!("\tb .Lbegin0");
+                println!(".Lend0:");
+                return;
+            }
             Node::BinOp(op, lhs, rhs) => {
                 self.gen(lhs.as_ref());
                 self.gen(rhs.as_ref());
