@@ -1,7 +1,7 @@
 mod local_var_env;
 mod node;
 
-pub use node::{Node, NodeKind};
+pub use node::{BinOpType, Node};
 
 use crate::tokenizer::{TokenKind, TokenList};
 
@@ -35,7 +35,7 @@ impl<'a> Lexer<'a> {
             let return_value = self.expr();
             self.token_list.expect_kind(&TokenKind::Semicolon);
 
-            Node::new_return(Box::new(return_value))
+            Node::Return(Box::new(return_value))
         } else if self.token_list.try_consume(&TokenKind::If).is_some() {
             self.token_list.expect_kind(&TokenKind::LParen);
             let condition = self.expr();
@@ -45,21 +45,21 @@ impl<'a> Lexer<'a> {
             if self.token_list.try_consume(&TokenKind::Else).is_some() {
                 let else_body = self.stmt();
 
-                return Node::new_if(
+                return Node::If(
                     Box::new(condition),
                     Box::new(then_body),
                     Some(Box::new(else_body)),
                 );
             }
 
-            Node::new_if(Box::new(condition), Box::new(then_body), None)
+            Node::If(Box::new(condition), Box::new(then_body), None)
         } else if self.token_list.try_consume(&TokenKind::While).is_some() {
             self.token_list.expect_kind(&TokenKind::LParen);
             let condition = self.expr();
             self.token_list.expect_kind(&TokenKind::RParen);
             let body = self.stmt();
 
-            Node::new_while(Box::new(condition), Box::new(body))
+            Node::While(Box::new(condition), Box::new(body))
         } else {
             let expr = self.expr();
             self.token_list.expect_kind(&TokenKind::Semicolon);
@@ -75,7 +75,7 @@ impl<'a> Lexer<'a> {
     fn assign(&mut self) -> Node {
         let mut node = self.equality();
         if self.token_list.try_consume(&TokenKind::Assign).is_some() {
-            node = Node::new_bin_op_node(NodeKind::Assign, Box::new(node), Box::new(self.assign()));
+            node = Node::Assign(Box::new(node), Box::new(self.assign()));
         }
 
         node
@@ -86,14 +86,14 @@ impl<'a> Lexer<'a> {
 
         loop {
             if self.token_list.try_consume(&TokenKind::Equal).is_some() {
-                node = Node::new_bin_op_node(
-                    NodeKind::Equal,
+                node = Node::BinOp(
+                    BinOpType::Equal,
                     Box::new(node),
                     Box::new(self.relational()),
                 );
             } else if self.token_list.try_consume(&TokenKind::NotEqual).is_some() {
-                node = Node::new_bin_op_node(
-                    NodeKind::NotEqual,
+                node = Node::BinOp(
+                    BinOpType::NotEqual,
                     Box::new(node),
                     Box::new(self.relational()),
                 );
@@ -108,15 +108,14 @@ impl<'a> Lexer<'a> {
 
         loop {
             if self.token_list.try_consume(&TokenKind::LessThan).is_some() {
-                node =
-                    Node::new_bin_op_node(NodeKind::LessThan, Box::new(node), Box::new(self.add()));
+                node = Node::BinOp(BinOpType::LessThan, Box::new(node), Box::new(self.add()));
             } else if self
                 .token_list
                 .try_consume(&TokenKind::LessThanOrEqual)
                 .is_some()
             {
-                node = Node::new_bin_op_node(
-                    NodeKind::LessThanOrEqual,
+                node = Node::BinOp(
+                    BinOpType::LessThanOrEqual,
                     Box::new(node),
                     Box::new(self.add()),
                 );
@@ -125,15 +124,14 @@ impl<'a> Lexer<'a> {
                 .try_consume(&TokenKind::GreaterThan)
                 .is_some()
             {
-                node =
-                    Node::new_bin_op_node(NodeKind::LessThan, Box::new(self.add()), Box::new(node));
+                node = Node::BinOp(BinOpType::LessThan, Box::new(self.add()), Box::new(node));
             } else if self
                 .token_list
                 .try_consume(&TokenKind::GreaterThanOrEqual)
                 .is_some()
             {
-                node = Node::new_bin_op_node(
-                    NodeKind::LessThanOrEqual,
+                node = Node::BinOp(
+                    BinOpType::LessThanOrEqual,
                     Box::new(self.add()),
                     Box::new(node),
                 );
@@ -148,9 +146,9 @@ impl<'a> Lexer<'a> {
 
         loop {
             if self.token_list.try_consume(&TokenKind::Plus).is_some() {
-                node = Node::new_bin_op_node(NodeKind::Add, Box::new(node), Box::new(self.mul()));
+                node = Node::BinOp(BinOpType::Add, Box::new(node), Box::new(self.mul()));
             } else if self.token_list.try_consume(&TokenKind::Minus).is_some() {
-                node = Node::new_bin_op_node(NodeKind::Sub, Box::new(node), Box::new(self.mul()));
+                node = Node::BinOp(BinOpType::Sub, Box::new(node), Box::new(self.mul()));
             } else {
                 return node;
             }
@@ -161,9 +159,9 @@ impl<'a> Lexer<'a> {
         let mut node = self.unary();
         loop {
             if self.token_list.try_consume(&TokenKind::Mul).is_some() {
-                node = Node::new_bin_op_node(NodeKind::Mul, Box::new(node), Box::new(self.unary()));
+                node = Node::BinOp(BinOpType::Mul, Box::new(node), Box::new(self.unary()));
             } else if self.token_list.try_consume(&TokenKind::Div).is_some() {
-                node = Node::new_bin_op_node(NodeKind::Div, Box::new(node), Box::new(self.unary()));
+                node = Node::BinOp(BinOpType::Div, Box::new(node), Box::new(self.unary()));
             } else {
                 return node;
             }
@@ -175,9 +173,9 @@ impl<'a> Lexer<'a> {
             return self.primary();
         }
         if self.token_list.try_consume(&TokenKind::Minus).is_some() {
-            return Node::new_bin_op_node(
-                NodeKind::Sub,
-                Box::new(Node::new_num(0)),
+            return Node::BinOp(
+                BinOpType::Sub,
+                Box::new(Node::Num(0)),
                 Box::new(self.primary()),
             );
         }
@@ -192,14 +190,14 @@ impl<'a> Lexer<'a> {
         } else if let Some(ident_tok) = self.token_list.try_consume(&TokenKind::Ident) {
             let ident_name = ident_tok.str.unwrap();
             if let Some(offset) = self.local_var_environment.variable_offset(&ident_name) {
-                return Node::new_local_var(*offset);
+                return Node::LocalVar(*offset);
             } else {
                 let offset = self.local_var_environment.intern_new_variable(&ident_name);
-                return Node::new_local_var(offset);
+                return Node::LocalVar(offset);
             }
         }
 
         let n = self.token_list.expect_num();
-        Node::new_num(n)
+        Node::Num(n)
     }
 }

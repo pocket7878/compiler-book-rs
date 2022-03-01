@@ -1,4 +1,4 @@
-use crate::lexer::{Node, NodeKind};
+use crate::lexer::{BinOpType, Node};
 
 const FRAME_POINTER_REGISTER: &str = "x29";
 const STACK_ALIGNMENT: i32 = 16;
@@ -22,124 +22,136 @@ impl CodeGenerator {
     }
 
     fn gen(&self, node: &Node) {
-        match node.kind {
-            NodeKind::Num => {
-                self.generate_comment(&format!("num: {}", node.val.unwrap()));
-                self.generate_num(node);
+        match node {
+            Node::Num(n) => {
+                self.generate_comment(&format!("num: {}", n));
+                println!("\tmov x2, #{}", n);
+                self.generate_push_register_to_stack("x2");
                 return;
             }
-            NodeKind::LocalVar => {
-                self.generate_comment(&format!("local var offset: {}", node.offset.unwrap()));
+            Node::LocalVar(offset) => {
+                self.generate_comment(&format!("local var offset: {}", offset));
+
                 self.generate_comment("\t local var push address to stack");
                 self.generate_local_var(node);
+
                 self.generate_comment("\t local var pop address from stack");
                 self.generate_pop_register_from_stack("x0");
+
                 self.generate_comment("\t local var read address content to register");
                 println!("\tldr x0, [x0]");
-                self.generate_comment("\t local var value to stack");
+
+                self.generate_comment("\t local var push value to stack");
                 self.generate_push_register_to_stack("x0");
                 return;
             }
-            NodeKind::Assign => {
-                self.generate_comment(&format!("assign local var"));
-                self.generate_comment(&format!("\tassign local var push lhs(address)"));
-                self.generate_local_var(node.lhs.as_ref().unwrap());
-                self.generate_comment(&format!("\tassign local var push rhs(value)"));
-                self.gen(node.rhs.as_ref().unwrap());
+            Node::Assign(lhs, rhs) => {
+                self.generate_comment(&format!("assign"));
+
+                self.generate_comment(&format!("\tassign push lhs(address)"));
+                self.generate_local_var(lhs.as_ref());
+
+                self.generate_comment(&format!("\tassign push rhs(value)"));
+                self.gen(rhs.as_ref());
+
                 self.generate_comment(&format!("\tassign pop value and address"));
                 self.generate_pop_register_from_stack("x1");
                 self.generate_pop_register_from_stack("x0");
-                self.generate_comment(&format!("\tassign store to address"));
+
+                self.generate_comment(&format!("\tassign store values to address"));
                 println!("\tstr x1, [x0]");
+
+                // Cでは代入式は代入された値を返す
+                self.generate_comment(&format!("\tassign push assigned value to stack"));
                 self.generate_push_register_to_stack("x1");
                 return;
             }
-            NodeKind::Return => {
+            Node::Return(value) => {
                 self.generate_comment("return");
-                self.gen(node.lhs.as_ref().unwrap());
+                self.gen(value.as_ref());
                 self.generate_pop_register_from_stack("x0");
                 println!("\tmov sp, {}", FRAME_POINTER_REGISTER);
                 self.generate_pop_register_from_stack(FRAME_POINTER_REGISTER);
                 println!("\tret");
                 return;
             }
-            NodeKind::If => {
+            Node::If(condition, then_body, else_body) => {
                 self.generate_comment("if");
                 self.generate_comment("\tif condition");
-                self.gen(node.lhs.as_ref().unwrap());
+                self.gen(condition.as_ref());
                 self.generate_pop_register_from_stack("x0");
                 println!("\tcmp x0, #0");
-                if let Some(else_body) = &node.else_body {
+                if let Some(else_body) = &else_body {
                     println!("\tb.eq .Lelse0");
                     self.generate_comment("\tif then-body");
-                    self.gen(node.rhs.as_ref().unwrap());
+                    self.gen(then_body.as_ref());
                     println!("\tb .Lend0");
                     println!(".Lelse0:");
                     self.generate_comment("\tif then-else-body");
                     self.gen(else_body);
                 } else {
                     println!("\tb.eq .Lend0");
-                    self.gen(node.rhs.as_ref().unwrap());
+                    self.gen(then_body.as_ref());
                 }
                 println!(".Lend0:");
                 return;
             }
-            NodeKind::While => {
+            Node::While(condition, body) => {
                 println!(".Lbegin0:");
-                self.gen(node.lhs.as_ref().unwrap());
+                self.gen(condition.as_ref());
                 self.generate_pop_register_from_stack("x0");
                 println!("\tcmp x0, #0");
                 println!("\tb.eq .Lend0");
-                self.gen(node.rhs.as_ref().unwrap());
+                self.gen(body.as_ref());
                 println!("\tb .Lbegin0");
                 println!(".Lend0:");
                 return;
             }
-            _ => { /* Nothing to DO */ }
+            Node::BinOp(op, lhs, rhs) => {
+                self.gen(lhs.as_ref());
+                self.gen(rhs.as_ref());
+
+                self.generate_pop_register_from_stack("x1");
+                self.generate_pop_register_from_stack("x0");
+
+                match *op {
+                    BinOpType::Add => println!("\tadd x0, x0, x1"),
+                    BinOpType::Sub => println!("\tsub x0, x0, x1"),
+                    BinOpType::Mul => println!("\tmul x0, x0, x1"),
+                    BinOpType::Div => println!("\tsdiv x0, x0, x1"),
+                    BinOpType::Equal => {
+                        println!("\tcmp x0, x1");
+                        println!("\tcset x0, EQ");
+                    }
+                    BinOpType::NotEqual => {
+                        println!("\tcmp x0, x1");
+                        println!("\tcset x0, NE");
+                    }
+                    BinOpType::LessThan => {
+                        println!("\tcmp x0, x1");
+                        println!("\tcset x0, LT");
+                    }
+                    BinOpType::LessThanOrEqual => {
+                        println!("\tcmp x0, x1");
+                        println!("\tcset x0, LE");
+                    }
+                }
+                self.generate_push_register_to_stack("x0");
+            }
         }
-
-        self.gen(node.lhs.as_ref().unwrap());
-        self.gen(node.rhs.as_ref().unwrap());
-
-        self.generate_pop_register_from_stack("x1");
-        self.generate_pop_register_from_stack("x0");
-
-        match node.kind {
-            NodeKind::Add => println!("\tadd x0, x0, x1"),
-            NodeKind::Sub => println!("\tsub x0, x0, x1"),
-            NodeKind::Mul => println!("\tmul x0, x0, x1"),
-            NodeKind::Div => println!("\tsdiv x0, x0, x1"),
-            NodeKind::Equal => {
-                println!("\tcmp x0, x1");
-                println!("\tcset x0, EQ");
-            }
-            NodeKind::NotEqual => {
-                println!("\tcmp x0, x1");
-                println!("\tcset x0, NE");
-            }
-            NodeKind::LessThan => {
-                println!("\tcmp x0, x1");
-                println!("\tcset x0, LT");
-            }
-            NodeKind::LessThanOrEqual => {
-                println!("\tcmp x0, x1");
-                println!("\tcset x0, LE");
-            }
-            _ => { /* Ignore */ }
-        }
-
-        self.generate_push_register_to_stack("x0");
-    }
-
-    fn generate_num(&self, node: &Node) {
-        println!("\tmov x2, #{}", node.val.unwrap());
-        self.generate_push_register_to_stack("x2");
     }
 
     fn generate_local_var(&self, node: &Node) {
-        println!("\tmov x0, {}", FRAME_POINTER_REGISTER);
-        println!("\tsub x0, x0, #{}", node.offset.unwrap());
-        self.generate_push_register_to_stack("x0");
+        match node {
+            Node::LocalVar(offset) => {
+                println!("\tmov x0, {}", FRAME_POINTER_REGISTER);
+                println!("\tsub x0, x0, #{}", offset);
+                self.generate_push_register_to_stack("x0");
+            }
+            _ => {
+                panic!("Node: {:?} is not local var", node);
+            }
+        }
     }
 
     fn generate_program_opening(&self) {
