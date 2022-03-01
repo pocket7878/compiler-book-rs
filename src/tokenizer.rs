@@ -49,6 +49,8 @@ impl<'a> Tokenizer<'a> {
                 ("/", TokenKind::Div),
                 ("(", TokenKind::LParen),
                 (")", TokenKind::RParen),
+                ("{", TokenKind::LBrace),
+                ("}", TokenKind::RBrace),
                 (";", TokenKind::Semicolon),
                 ("=", TokenKind::Assign),
             ];
@@ -316,5 +318,13 @@ mod tests {
         assert_eq!(token_list.next().unwrap().kind, super::TokenKind::Ident);
         assert_eq!(token_list.next().unwrap().kind, super::TokenKind::Ident);
         assert_eq!(token_list.next().unwrap().kind, super::TokenKind::For);
+    }
+
+    #[test]
+    fn tokenize_brace() {
+        let expr = "{}";
+        let mut token_list = super::Tokenizer::new(expr).tokenize();
+        assert_eq!(token_list.next().unwrap().kind, super::TokenKind::LBrace);
+        assert_eq!(token_list.next().unwrap().kind, super::TokenKind::RBrace);
     }
 }
