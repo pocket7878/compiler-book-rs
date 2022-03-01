@@ -135,8 +135,14 @@ impl CodeGenerator {
                     self.generate_pop_register_from_stack("x0");
                 }
             }
-            Node::Funcall(name) => {
-                println!("\tb _{}", name);
+            Node::Funcall(name, args) => {
+                for a in args {
+                    self.gen(a);
+                }
+                for i in (0..args.len()).rev() {
+                    self.generate_pop_register_from_stack(&format!("x{}", i));
+                }
+                println!("\tbl _{}", name);
                 return;
             }
             Node::BinOp(op, lhs, rhs) => {

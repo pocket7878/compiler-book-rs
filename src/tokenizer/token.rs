@@ -23,6 +23,7 @@ pub enum TokenKind {
     Else,
     While,
     For,
+    Comma,
 }
 
 #[derive(PartialEq, Eq, Debug, Clone)]

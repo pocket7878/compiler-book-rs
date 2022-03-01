@@ -53,6 +53,7 @@ impl<'a> Tokenizer<'a> {
                 ("}", TokenKind::RBrace),
                 (";", TokenKind::Semicolon),
                 ("=", TokenKind::Assign),
+                (",", TokenKind::Comma),
             ];
             let consumed_symbolic_token = reserved_symbolic_tokens
                 .into_iter()
@@ -326,5 +327,12 @@ mod tests {
         let mut token_list = super::Tokenizer::new(expr).tokenize();
         assert_eq!(token_list.next().unwrap().kind, super::TokenKind::LBrace);
         assert_eq!(token_list.next().unwrap().kind, super::TokenKind::RBrace);
+    }
+
+    #[test]
+    fn tokenize_comma() {
+        let expr = ",";
+        let mut token_list = super::Tokenizer::new(expr).tokenize();
+        assert_eq!(token_list.next().unwrap().kind, super::TokenKind::Comma);
     }
 }

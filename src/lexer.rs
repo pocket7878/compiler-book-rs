@@ -228,8 +228,27 @@ impl<'a> Lexer<'a> {
         } else if let Some(ident_tok) = self.token_list.try_consume(&TokenKind::Ident) {
             let ident_name = ident_tok.str.unwrap();
             if self.token_list.try_consume(&TokenKind::LParen).is_some() {
-                self.token_list.expect_kind(&TokenKind::RParen);
-                return Node::Funcall(ident_name);
+                // 最大6つまでの引数をサポートする
+                let mut args = vec![];
+                let mut paren_consumed = false;
+                for _ in 1..=6 {
+                    if self.token_list.try_consume(&TokenKind::RParen).is_none() {
+                        args.push(self.expr());
+                        if self.token_list.try_consume(&TokenKind::RParen).is_none() {
+                            self.token_list.expect_kind(&TokenKind::Comma);
+                        } else {
+                            paren_consumed = true;
+                            break;
+                        }
+                    } else {
+                        paren_consumed = true;
+                        break;
+                    }
+                }
+                if !paren_consumed {
+                    self.token_list.expect_kind(&TokenKind::RParen);
+                }
+                return Node::Funcall(ident_name, args);
             } else if let Some(offset) = self.local_var_environment.variable_offset(&ident_name) {
                 return Node::LocalVar(*offset);
             } else {
