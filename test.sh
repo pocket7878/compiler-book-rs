@@ -63,4 +63,9 @@ assert 1 'a = 0; while (a == 0) a = a + 1; a;'
 assert 10 'a = 0; for (a = 0; a < 10; a = a + 1) 42; a;'
 assert 10 'a = 0; for (; a < 10; a = a + 1) 42; a;'
 
+# block
+assert 30 'a = 0; b = 0; c = 0; if (a == 0) { b = 10; c = 20; } b + c;'
+assert 30 'a = 0; b = 0; c = 0; if (a != 0) {} else { b = 10; c = 20; } b + c;'
+assert 10 'a = 0; b = 0; for (a = 0; a < 10;) { a = a + 1; b = b + 1; } b;'
+
 echo OK

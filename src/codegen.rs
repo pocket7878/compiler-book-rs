@@ -129,6 +129,12 @@ impl CodeGenerator {
                 println!(".Lend0:");
                 return;
             }
+            Node::Block(stmts) => {
+                for s in stmts {
+                    self.gen(s);
+                    self.generate_pop_register_from_stack("x0");
+                }
+            }
             Node::BinOp(op, lhs, rhs) => {
                 self.gen(lhs.as_ref());
                 self.gen(rhs.as_ref());

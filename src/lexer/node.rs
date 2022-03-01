@@ -26,4 +26,5 @@ pub enum Node {
         Option<Box<Node>>,
         Box<Node>,
     ),
+    Block(Vec<Node>),
 }

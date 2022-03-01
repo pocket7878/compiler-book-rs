@@ -91,6 +91,13 @@ impl<'a> Lexer<'a> {
 
             let body = self.stmt();
             Node::For(init, check, update, Box::new(body))
+        } else if self.token_list.try_consume(&TokenKind::LBrace).is_some() {
+            let mut stmts = vec![];
+            while self.token_list.try_consume(&TokenKind::RBrace).is_none() {
+                stmts.push(self.stmt());
+            }
+
+            Node::Block(stmts)
         } else {
             let expr = self.expr();
             self.token_list.expect_kind(&TokenKind::Semicolon);
