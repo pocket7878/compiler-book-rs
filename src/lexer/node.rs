@@ -27,4 +27,5 @@ pub enum Node {
         Box<Node>,
     ),
     Block(Vec<Node>),
+    Funcall(String),
 }

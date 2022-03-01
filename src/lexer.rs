@@ -227,7 +227,10 @@ impl<'a> Lexer<'a> {
             return node;
         } else if let Some(ident_tok) = self.token_list.try_consume(&TokenKind::Ident) {
             let ident_name = ident_tok.str.unwrap();
-            if let Some(offset) = self.local_var_environment.variable_offset(&ident_name) {
+            if self.token_list.try_consume(&TokenKind::LParen).is_some() {
+                self.token_list.expect_kind(&TokenKind::RParen);
+                return Node::Funcall(ident_name);
+            } else if let Some(offset) = self.local_var_environment.variable_offset(&ident_name) {
                 return Node::LocalVar(*offset);
             } else {
                 let offset = self.local_var_environment.intern_new_variable(&ident_name);
