@@ -25,6 +25,8 @@ pub enum TokenKind {
     For,
     Comma,
     Ampersand,
+    // Type like
+    Int,
 }
 
 #[derive(PartialEq, Eq, Debug, Clone)]
