@@ -31,4 +31,5 @@ pub enum Node {
     Fundef(String, Vec<String>, Vec<Node>),
     Addr(Box<Node>),
     Deref(Box<Node>),
+    VarDef(String),
 }

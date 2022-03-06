@@ -47,39 +47,39 @@ assert 0 'main() { return 2==3; }'
 assert 0 'main() { return 2!=2; }'
 
 # 1文字変数
-assert 42 'main() { a = 42; return a; }'
-assert 21 'main() { a = 5; b = 20; c = 4; return a + b - c; }'
+assert 42 'main() { int a; a = 42; return a; }'
+assert 21 'main() { int a; int b; int c; a = 5; b = 20; c = 4; return a + b - c; }'
 
 # 複数文字変数
-assert 42 'main() { foo = 42; return foo; }'
-assert 21 'main() { foo = 5; bar = 20; baz = 4; return foo + bar - baz; }'
+assert 42 'main() { int foo; foo = 42; return foo; }'
+assert 21 'main() { int foo; int bar; int baz; foo = 5; bar = 20; baz = 4; return foo + bar - baz; }'
 
 # return
-assert 42 'main() { foo = 42; return foo; }'
-assert 5 'main() { a = 5; return a; b = 20; }'
+assert 42 'main() { int foo; foo = 42; return foo; }'
+assert 5 'main() { int a; int b; a = 5; return a; b = 20; }'
 
 # if else
-assert 42 'main() { a = 10; if (a == 10) return 42; }'
-assert 42 'main() { a = 1; if (a != 10) return 42; return 24; }'
-assert 42 'main() { a = 10; if (a == 10) return 42; else return 24; }'
-assert 24 'main() { a = 10; if (a != 10) return 42; else return 24; }'
+assert 42 'main() { int a; a = 10; if (a == 10) return 42; }'
+assert 42 'main() { int a; a = 1; if (a != 10) return 42; return 24; }'
+assert 42 'main() { int a; a = 10; if (a == 10) return 42; else return 24; }'
+assert 24 'main() { int a; a = 10; if (a != 10) return 42; else return 24; }'
 
 # while
-assert 10 'main() { a = 0; while (a != 10) a = a + 1; return a; }'
-assert 1 'main() { a = 0; while (a == 0) a = a + 1; return a; }'
+assert 10 'main() { int a; a = 0; while (a != 10) a = a + 1; return a; }'
+assert 1 'main() { int a; a = 0; while (a == 0) a = a + 1; return a; }'
 
 # for
-assert 10 'main() { a = 0; for (a = 0; a < 10; a = a + 1) 42; return a; }'
-assert 10 'main() { a = 0; for (; a < 10; a = a + 1) 42; return a; }'
+assert 10 'main() { int a; a = 0; for (a = 0; a < 10; a = a + 1) 42; return a; }'
+assert 10 'main() { int a; a = 0; for (; a < 10; a = a + 1) 42; return a; }'
 
 # block
-assert 30 'main() { a = 0; b = 0; c = 0; if (a == 0) { b = 10; c = 20; } return b + c; }'
-assert 30 'main() { a = 0; b = 0; c = 0; if (a != 0) {} else { b = 10; c = 20; } return b + c; }'
-assert 10 'main() { a = 0; b = 0; for (a = 0; a < 10;) { a = a + 1; b = b + 1; } return b; }'
+assert 30 'main() { int a; int b; int c; a = 0; b = 0; c = 0; if (a == 0) { b = 10; c = 20; } return b + c; }'
+assert 30 'main() { int a; int b; int c; a = 0; b = 0; c = 0; if (a != 0) {} else { b = 10; c = 20; } return b + c; }'
+assert 10 'main() { int a; int b; a = 0; b = 0; for (a = 0; a < 10;) { a = a + 1; b = b + 1; } return b; }'
 
 # funcall
-assert 3 'main() { a = 1; b = 2; c = add(a, b); return c; }'
-assert 10 'main() { c = add(add(1, 2), add(3, 4)); return c; }'
+assert 3 'main() { int a; int b; int c; a = 1; b = 2; c = add(a, b); return c; }'
+assert 10 'main() { int c; c = add(add(1, 2), add(3, 4)); return c; }'
 
 # fndef
 assert 42 'foo() { return 42; } main() { return foo(); }' 
@@ -87,6 +87,6 @@ assert 24 'fact(a) { if (a == 0) { return 1; } else { return a * fact(a - 1); } 
 assert 55 'fib(a) { if (a == 0) { return 0; } else if (a == 1) { return 1; }  else { return fib(a - 1) + fib(a - 2); } } main() { return fib(10); }' 
 
 # addr
-assert 3 'main() { x = 3; y = &x; return *y; }' 
+assert 3 'main() { int x; int y; x = 3; y = &x; return *y; }' 
 
 echo OK

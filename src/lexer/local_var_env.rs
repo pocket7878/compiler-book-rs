@@ -14,6 +14,10 @@ impl LocalVarEnvironment {
         }
     }
 
+    pub fn is_interned(&self, var_name: &str) -> bool {
+        self.variables.contains_key(var_name)
+    }
+
     pub fn intern(&mut self, name: &str) -> i32 {
         if let Some(offset) = self.variables.get(name) {
             *offset

@@ -37,6 +37,7 @@ impl CodeGenerator {
                 println!("\tmov x2, #{}", n);
                 self.generate_push_register_to_stack("x2");
             }
+            Node::VarDef(_) => {}
             Node::LocalVar(name, offset) => {
                 self.generate_comment(&format!("local var {} at {}", name, offset.unwrap()));
 
