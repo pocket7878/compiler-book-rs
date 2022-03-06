@@ -1,3 +1,5 @@
+use super::var_type::VarType;
+
 #[derive(PartialEq, Eq, Debug)]
 
 pub enum BinOpType {
@@ -28,7 +30,7 @@ pub enum Node {
     ),
     Block(Vec<Node>),
     Funcall(String, Vec<Node>),
-    Fundef(String, Vec<String>, Vec<Node>),
+    Fundef(String, Vec<(VarType, String)>, Vec<Node>),
     Addr(Box<Node>),
     Deref(Box<Node>),
     VarDef(String),

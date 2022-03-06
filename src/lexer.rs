@@ -1,10 +1,12 @@
 mod local_var_env;
 mod node;
+mod var_type;
 
 pub use node::{BinOpType, Node};
 
 use self::local_var_env::LocalVarEnvironment;
 use crate::tokenizer::{TokenKind, TokenList};
+use var_type::VarType;
 
 pub struct Lexer<'a> {
     token_list: TokenList<'a>,
@@ -26,7 +28,7 @@ impl<'a> Lexer<'a> {
                 let mut function_scope_local_var_env =
                     LocalVarEnvironment::new_with_base_offset(16);
                 for arg in args {
-                    function_scope_local_var_env.intern(arg);
+                    function_scope_local_var_env.intern(&arg.1, arg.0.clone());
                 }
                 for b in body.iter_mut() {
                     self.assign_local_var_offset(b, &mut function_scope_local_var_env)
@@ -43,12 +45,12 @@ impl<'a> Lexer<'a> {
     fn assign_local_var_offset(&self, node: &mut Node, local_var_env: &mut LocalVarEnvironment) {
         match node {
             Node::VarDef(name) => {
-                local_var_env.intern(name);
+                local_var_env.intern(name, VarType::Int);
             }
             Node::LocalVar(name, offset) => {
                 if offset.is_none() {
                     if local_var_env.is_interned(name) {
-                        *offset = Some(local_var_env.intern(name));
+                        *offset = Some(local_var_env.intern(name, VarType::Int));
                     } else {
                         panic!("Undefined variable: {}", name);
                     }
@@ -119,8 +121,8 @@ impl<'a> Lexer<'a> {
         Node::Fundef(fn_name, args, body)
     }
 
-    fn fundef_args(&mut self) -> Vec<String> {
-        let mut args: Vec<String> = vec![];
+    fn fundef_args(&mut self) -> Vec<(VarType, String)> {
+        let mut args: Vec<(VarType, String)> = vec![];
 
         self.token_list.expect_kind(&TokenKind::LParen);
         // 最大6つまでの引数をサポートする
@@ -146,9 +148,11 @@ impl<'a> Lexer<'a> {
         args
     }
 
-    fn fundef_arg(&mut self) -> String {
+    fn fundef_arg(&mut self) -> (VarType, String) {
         self.token_list.expect_kind(&TokenKind::Int);
-        self.token_list.expect_kind(&TokenKind::Ident).str.unwrap()
+        let name = self.token_list.expect_kind(&TokenKind::Ident).str.unwrap();
+
+        return (VarType::Int, name);
     }
 
     fn fundef_body(&mut self) -> Vec<Node> {

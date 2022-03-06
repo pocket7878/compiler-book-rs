@@ -1,14 +1,9 @@
+use super::var_type::VarType;
 use std::collections::HashMap;
 
 #[derive(Clone)]
-enum Type {
-    Int,
-    Ptr(Box<Type>),
-}
-
-#[derive(Clone)]
 struct VarInfo {
-    ty: Type,
+    ty: VarType,
     offset: i32,
 }
 
@@ -30,7 +25,7 @@ impl LocalVarEnvironment {
         self.variables.contains_key(var_name)
     }
 
-    pub fn intern(&mut self, name: &str) -> i32 {
+    pub fn intern(&mut self, name: &str, ty: VarType) -> i32 {
         if let Some(var_info) = self.variables.get(name) {
             var_info.offset
         } else {
@@ -38,7 +33,7 @@ impl LocalVarEnvironment {
             self.variables.insert(
                 name.to_string(),
                 VarInfo {
-                    ty: Type::Int,
+                    ty: ty,
                     offset: var_offset,
                 },
             );
