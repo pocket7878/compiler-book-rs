@@ -54,6 +54,7 @@ impl<'a> Tokenizer<'a> {
                 (";", TokenKind::Semicolon),
                 ("=", TokenKind::Assign),
                 (",", TokenKind::Comma),
+                ("&", TokenKind::Ampersand),
             ];
             let consumed_symbolic_token = reserved_symbolic_tokens
                 .into_iter()
@@ -334,5 +335,12 @@ mod tests {
         let expr = ",";
         let mut token_list = super::Tokenizer::new(expr).tokenize();
         assert_eq!(token_list.next().unwrap().kind, super::TokenKind::Comma);
+    }
+
+    #[test]
+    fn tokenize_ampersand() {
+        let expr = "&";
+        let mut token_list = super::Tokenizer::new(expr).tokenize();
+        assert_eq!(token_list.next().unwrap().kind, super::TokenKind::Ampersand);
     }
 }
