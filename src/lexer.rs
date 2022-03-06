@@ -312,7 +312,7 @@ impl<'a> Lexer<'a> {
     fn mul(&mut self) -> Node {
         let mut node = self.unary();
         loop {
-            if self.token_list.try_consume(&TokenKind::Mul).is_some() {
+            if self.token_list.try_consume(&TokenKind::Star).is_some() {
                 node = Node::BinOp(BinOpType::Mul, Box::new(node), Box::new(self.unary()));
             } else if self.token_list.try_consume(&TokenKind::Div).is_some() {
                 node = Node::BinOp(BinOpType::Div, Box::new(node), Box::new(self.unary()));

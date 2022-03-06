@@ -45,7 +45,7 @@ impl<'a> Tokenizer<'a> {
                 ("<", TokenKind::LessThan),
                 ("+", TokenKind::Plus),
                 ("-", TokenKind::Minus),
-                ("*", TokenKind::Mul),
+                ("*", TokenKind::Star),
                 ("/", TokenKind::Div),
                 ("(", TokenKind::LParen),
                 (")", TokenKind::RParen),
@@ -174,7 +174,7 @@ mod tests {
         let mut token_list = super::Tokenizer::new(expr).tokenize();
         assert_eq!(token_list.next().unwrap().kind, super::TokenKind::Plus);
         assert_eq!(token_list.next().unwrap().kind, super::TokenKind::Minus);
-        assert_eq!(token_list.next().unwrap().kind, super::TokenKind::Mul);
+        assert_eq!(token_list.next().unwrap().kind, super::TokenKind::Star);
         assert_eq!(token_list.next().unwrap().kind, super::TokenKind::Div);
     }
 

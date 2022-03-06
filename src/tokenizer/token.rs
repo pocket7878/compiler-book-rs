@@ -2,7 +2,7 @@
 pub enum TokenKind {
     Plus,
     Minus,
-    Mul,
+    Star,
     Div,
     Num,
     Ident,
