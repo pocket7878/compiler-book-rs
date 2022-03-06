@@ -7,13 +7,6 @@ pub struct LocalVarEnvironment {
 }
 
 impl LocalVarEnvironment {
-    pub fn new() -> Self {
-        Self {
-            offset: 0,
-            variables: HashMap::new(),
-        }
-    }
-
     pub fn new_with_base_offset(base_offset: i32) -> Self {
         Self {
             offset: base_offset,

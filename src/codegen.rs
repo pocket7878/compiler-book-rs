@@ -52,6 +52,15 @@ impl CodeGenerator {
                 self.generate_comment("\t local var push value to stack");
                 self.generate_push_register_to_stack("x0");
             }
+            Node::Addr(node) => {
+                self.generate_local_var(node);
+            }
+            Node::Deref(node) => {
+                self.gen(node, label_index, current_fn_name);
+                self.generate_pop_register_from_stack("x0");
+                println!("\tldr x0, [x0]");
+                self.generate_push_register_to_stack("x0");
+            }
             Node::Assign(lhs, rhs) => {
                 self.generate_comment("assign");
 

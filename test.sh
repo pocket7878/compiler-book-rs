@@ -86,4 +86,7 @@ assert 42 'foo() { return 42; } main() { return foo(); }'
 assert 24 'fact(a) { if (a == 0) { return 1; } else { return a * fact(a - 1); }  } main() { return fact(4); }' 
 assert 55 'fib(a) { if (a == 0) { return 0; } else if (a == 1) { return 1; }  else { return fib(a - 1) + fib(a - 2); } } main() { return fib(10); }' 
 
+# addr
+assert 3 'main() { x = 3; y = &x; return *y; }' 
+
 echo OK

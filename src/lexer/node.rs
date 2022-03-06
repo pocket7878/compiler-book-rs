@@ -29,4 +29,6 @@ pub enum Node {
     Block(Vec<Node>),
     Funcall(String, Vec<Node>),
     Fundef(String, Vec<String>, Vec<Node>),
+    Addr(Box<Node>),
+    Deref(Box<Node>),
 }

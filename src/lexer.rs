@@ -58,6 +58,12 @@ impl<'a> Lexer<'a> {
                 self.assign_local_var_offset(rhs, local_var_env);
             }
             Node::Num(_) => {}
+            Node::Addr(node) => {
+                self.assign_local_var_offset(node, local_var_env);
+            }
+            Node::Deref(node) => {
+                self.assign_local_var_offset(node, local_var_env);
+            }
             Node::Return(return_value_node) => {
                 self.assign_local_var_offset(return_value_node, local_var_env);
             }
@@ -332,6 +338,12 @@ impl<'a> Lexer<'a> {
                 Box::new(Node::Num(0)),
                 Box::new(self.primary()),
             );
+        }
+        if self.token_list.try_consume(&TokenKind::Star).is_some() {
+            return Node::Deref(Box::new(self.unary()));
+        }
+        if self.token_list.try_consume(&TokenKind::Ampersand).is_some() {
+            return Node::Addr(Box::new(self.unary()));
         }
         self.primary()
     }
