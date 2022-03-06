@@ -112,6 +112,7 @@ impl<'a> Lexer<'a> {
     }
 
     fn fundef(&mut self) -> Node {
+        self.token_list.expect_kind(&TokenKind::Int);
         let fn_name = self.token_list.expect_kind(&TokenKind::Ident).str.unwrap();
         let args = self.fundef_args();
         let body = self.fundef_body();
@@ -146,6 +147,7 @@ impl<'a> Lexer<'a> {
     }
 
     fn fundef_arg(&mut self) -> String {
+        self.token_list.expect_kind(&TokenKind::Int);
         self.token_list.expect_kind(&TokenKind::Ident).str.unwrap()
     }
 
