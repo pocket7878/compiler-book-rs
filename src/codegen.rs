@@ -14,19 +14,28 @@ impl CodeGenerator {
     }
 
     pub fn generate(&self) {
-        self.generate_program_opening();
+        // プログラム中でユニークなラベルを生成するため
+        let mut label_index = 0;
         for stmt in self.program.iter() {
-            self.gen(stmt);
+            match stmt {
+                Node::Fundef(name, _, _) => {
+                    println!("\t.globl _{}", name);
+                    println!("\t.p2align 2");
+                    self.gen(stmt, &mut label_index, name);
+                }
+                _ => {
+                    panic!("Unsupported toplevel node: {:?}", stmt);
+                }
+            }
         }
     }
 
-    fn gen(&self, node: &Node) {
+    fn gen(&self, node: &Node, label_index: &mut i32, current_fn_name: &str) {
         match node {
             Node::Num(n) => {
                 self.generate_comment(&format!("num: {}", n));
                 println!("\tmov x2, #{}", n);
                 self.generate_push_register_to_stack("x2");
-                
             }
             Node::LocalVar(name, offset) => {
                 self.generate_comment(&format!("local var {} at {}", name, offset.unwrap()));
@@ -42,7 +51,6 @@ impl CodeGenerator {
 
                 self.generate_comment("\t local var push value to stack");
                 self.generate_push_register_to_stack("x0");
-                
             }
             Node::Assign(lhs, rhs) => {
                 self.generate_comment("assign");
@@ -51,7 +59,7 @@ impl CodeGenerator {
                 self.generate_local_var(lhs.as_ref());
 
                 self.generate_comment("\tassign push rhs(value)");
-                self.gen(rhs.as_ref());
+                self.gen(rhs.as_ref(), label_index, current_fn_name);
 
                 self.generate_comment("\tassign pop value and address");
                 self.generate_pop_register_from_stack("x1");
@@ -63,71 +71,72 @@ impl CodeGenerator {
                 // Cでは代入式は代入された値を返す
                 self.generate_comment("\tassign push assigned value to stack");
                 self.generate_push_register_to_stack("x1");
-                
             }
             Node::If(condition, then_body, else_body) => {
                 self.generate_comment("if");
                 self.generate_comment("\tif condition");
-                self.gen(condition.as_ref());
+                self.gen(condition.as_ref(), label_index, current_fn_name);
                 self.generate_pop_register_from_stack("x0");
                 println!("\tcmp x0, #0");
+
+                let idx = self.increment_label_index(label_index);
                 if let Some(else_body) = &else_body {
-                    println!("\tb.eq .Lelse0");
+                    println!("\tb.eq .Lelse{}", idx);
                     self.generate_comment("\tif then-body");
-                    self.gen(then_body.as_ref());
-                    println!("\tb .Lend0");
-                    println!(".Lelse0:");
+                    self.gen(then_body.as_ref(), label_index, current_fn_name);
+                    println!("\tb .Lend{}", idx);
+                    println!(".Lelse{}:", idx);
                     self.generate_comment("\tif then-else-body");
-                    self.gen(else_body);
+                    self.gen(else_body, label_index, current_fn_name);
                 } else {
-                    println!("\tb.eq .Lend0");
-                    self.gen(then_body.as_ref());
+                    println!("\tb.eq .Lend{}", idx);
+                    self.gen(then_body.as_ref(), label_index, current_fn_name);
                 }
-                println!(".Lend0:");
-                
+
+                println!(".Lend{}:", idx);
             }
             Node::While(condition, body) => {
-                println!(".Lbegin0:");
-                self.gen(condition.as_ref());
+                let idx = self.increment_label_index(label_index);
+                println!(".Lbegin{}:", idx);
+                self.gen(condition.as_ref(), label_index, current_fn_name);
                 self.generate_pop_register_from_stack("x0");
                 println!("\tcmp x0, #0");
-                println!("\tb.eq .Lend0");
-                self.gen(body.as_ref());
-                println!("\tb .Lbegin0");
-                println!(".Lend0:");
-                
+                println!("\tb.eq .Lend{}", idx);
+                self.gen(body.as_ref(), label_index, current_fn_name);
+                println!("\tb .Lbegin{}", idx);
+                println!(".Lend{}:", idx);
             }
             Node::For(init, check, update, body) => {
+                let idx = self.increment_label_index(label_index);
                 if let Some(init) = init {
-                    self.gen(init.as_ref());
+                    self.gen(init.as_ref(), label_index, current_fn_name);
                 }
-                println!(".Lbegin0:");
+                println!(".Lbegin{}:", idx);
                 if let Some(check) = check {
-                    self.gen(check.as_ref());
+                    self.gen(check.as_ref(), label_index, current_fn_name);
                 } else {
                     // checkがない場合は常にtrueにする
-                    self.gen(&Node::Num(1));
+                    self.gen(&Node::Num(1), label_index, current_fn_name);
                 }
                 self.generate_pop_register_from_stack("x0");
                 println!("\tcmp x0, #0");
-                println!("\tb.eq .Lend0");
-                self.gen(body.as_ref());
+                println!("\tb.eq .Lend{}", idx);
+                self.gen(body.as_ref(), label_index, current_fn_name);
                 if let Some(update) = update {
-                    self.gen(update.as_ref());
+                    self.gen(update.as_ref(), label_index, current_fn_name);
                 }
-                println!("\tb .Lbegin0");
-                println!(".Lend0:");
-                
+                println!("\tb .Lbegin{}", idx);
+                println!(".Lend{}:", idx);
             }
             Node::Block(stmts) => {
                 for s in stmts {
-                    self.gen(s);
+                    self.gen(s, label_index, current_fn_name);
                     self.generate_pop_register_from_stack("x0");
                 }
             }
             Node::Funcall(name, args) => {
                 for a in args {
-                    self.gen(a);
+                    self.gen(a, label_index, current_fn_name);
                 }
                 for i in (0..args.len()).rev() {
                     self.generate_pop_register_from_stack(&format!("x{}", i));
@@ -135,37 +144,40 @@ impl CodeGenerator {
                 println!("\tbl _{}", name);
                 // 関数の戻り値はx0に入っている
                 self.generate_push_register_to_stack("x0");
-                
             }
             Node::Return(value) => {
                 self.generate_comment("return");
-                self.gen(value.as_ref());
+                self.gen(value.as_ref(), label_index, current_fn_name);
                 self.generate_pop_register_from_stack("x0");
-                println!("\tb .L.return.0");
-                
+                println!("\tb .L.return_{}", current_fn_name);
             }
             Node::Fundef(name, args, body) => {
                 println!("_{}:", name);
-                self.generate_comment("Store initial sp to frame pointer register");
+                self.generate_comment("Store FP & LR to stack");
+                println!(
+                    "\tstp {}, {}, [sp, #-16]!",
+                    FRAME_POINTER_REGISTER, LINK_REGISTER
+                );
+                self.generate_comment("Update FP");
                 println!("\tmov {}, sp", FRAME_POINTER_REGISTER);
-                self.generate_comment("push LR to stack");
-                self.generate_push_register_to_stack(LINK_REGISTER);
                 for arg in args.iter().enumerate() {
                     self.generate_push_register_to_stack(&format!("x{}", arg.0));
                 }
                 for s in body {
-                    self.gen(s);
+                    self.gen(s, label_index, name);
                 }
-                println!(".L.return.0:");
+                println!(".L.return_{}:", name);
+                self.generate_comment("Restore FP & LR from stack");
+                println!("\tmov sp, {}", FRAME_POINTER_REGISTER);
                 println!(
-                    "\tldur {}, [{}, #-16]",
-                    LINK_REGISTER, FRAME_POINTER_REGISTER
+                    "\tldp {}, {}, [sp], #16",
+                    FRAME_POINTER_REGISTER, LINK_REGISTER
                 );
                 println!("\tret")
             }
             Node::BinOp(op, lhs, rhs) => {
-                self.gen(lhs.as_ref());
-                self.gen(rhs.as_ref());
+                self.gen(lhs.as_ref(), label_index, current_fn_name);
+                self.gen(rhs.as_ref(), label_index, current_fn_name);
 
                 self.generate_pop_register_from_stack("x1");
                 self.generate_pop_register_from_stack("x0");
@@ -197,6 +209,13 @@ impl CodeGenerator {
         }
     }
 
+    fn increment_label_index(&self, label_index: &mut i32) -> i32 {
+        let idx = *label_index;
+        *label_index += 1;
+
+        idx
+    }
+
     fn generate_local_var(&self, node: &Node) {
         match node {
             Node::LocalVar(name, offset) => {
@@ -212,10 +231,6 @@ impl CodeGenerator {
                 panic!("Node: {:?} is not local var", node);
             }
         }
-    }
-
-    fn generate_program_opening(&self) {
-        println!(".globl	_main");
     }
 
     fn generate_push_register_to_stack(&self, register: &str) {

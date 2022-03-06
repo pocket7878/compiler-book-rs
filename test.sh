@@ -2,7 +2,6 @@
 cat <<EOF | clang -xc -c -o tmp2.o -
 #include <stdio.h>
 int add(int x, int y) { return x+y; }
-void foo(x, y) { printf("x = %d, y = %d\n", x, y); }
 EOF
 
 assert() {
@@ -81,5 +80,10 @@ assert 10 'main() { a = 0; b = 0; for (a = 0; a < 10;) { a = a + 1; b = b + 1; }
 # funcall
 assert 3 'main() { a = 1; b = 2; c = add(a, b); return c; }'
 assert 10 'main() { c = add(add(1, 2), add(3, 4)); return c; }'
+
+# fndef
+assert 42 'foo() { return 42; } main() { return foo(); }' 
+assert 24 'fact(a) { if (a == 0) { return 1; } else { return a * fact(a - 1); }  } main() { return fact(4); }' 
+assert 55 'fib(a) { if (a == 0) { return 0; } else if (a == 1) { return 1; }  else { return fib(a - 1) + fib(a - 2); } } main() { return fib(10); }' 
 
 echo OK

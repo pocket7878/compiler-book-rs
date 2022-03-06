@@ -22,8 +22,9 @@ impl<'a> Lexer<'a> {
             // 関数の本体の変数のoffsetは引数に指定されているかどうかで変化するので、一度読みこんだ後に計算する
             let mut function = self.fundef();
             if let Node::Fundef(_, ref args, ref mut body) = function {
+                // スタックのトップには、FPとLRが保存されているので、-16以降が変数領域
                 let mut function_scope_local_var_env =
-                    LocalVarEnvironment::new_with_base_offset(32);
+                    LocalVarEnvironment::new_with_base_offset(16);
                 for arg in args {
                     function_scope_local_var_env.intern(arg);
                 }
