@@ -3,31 +3,146 @@ mod node;
 
 pub use node::{BinOpType, Node};
 
-use crate::tokenizer::{TokenKind, TokenList};
-
 use self::local_var_env::LocalVarEnvironment;
+use crate::tokenizer::{TokenKind, TokenList};
 
 pub struct Lexer<'a> {
     token_list: TokenList<'a>,
-    local_var_environment: LocalVarEnvironment,
 }
 
 impl<'a> Lexer<'a> {
     pub fn new(token_list: TokenList<'a>) -> Lexer<'a> {
-        Self {
-            token_list,
-            local_var_environment: LocalVarEnvironment::new(),
-        }
+        Self { token_list }
     }
 
     /* Lexing Programs */
     pub fn program(&mut self) -> Vec<Node> {
         let mut nodes = vec![];
         while !self.token_list.at_end() {
-            nodes.push(self.stmt());
+            // 関数の本体の変数のoffsetは引数に指定されているかどうかで変化するので、一度読みこんだ後に計算する
+            let mut function = self.fundef();
+            if let Node::Fundef(_, ref args, ref mut body) = function {
+                let mut function_scope_local_var_env =
+                    LocalVarEnvironment::new_with_base_offset(32);
+                for arg in args {
+                    function_scope_local_var_env.intern(arg);
+                }
+                for b in body.iter_mut() {
+                    self.assign_local_var_offset(b, &mut function_scope_local_var_env)
+                }
+                nodes.push(function);
+            } else {
+                unreachable!()
+            }
         }
 
         nodes
+    }
+
+    fn assign_local_var_offset(&self, node: &mut Node, local_var_env: &mut LocalVarEnvironment) {
+        match node {
+            Node::LocalVar(name, offset) => {
+                if offset.is_none() {
+                    *offset = Some(local_var_env.intern(name));
+                } else {
+                    unreachable!()
+                }
+            }
+            Node::BinOp(_, lhs, rhs) => {
+                self.assign_local_var_offset(lhs, local_var_env);
+                self.assign_local_var_offset(rhs, local_var_env);
+            }
+            Node::Assign(lhs, rhs) => {
+                self.assign_local_var_offset(lhs, local_var_env);
+                self.assign_local_var_offset(rhs, local_var_env);
+            }
+            Node::Num(_) => {}
+            Node::Return(return_value_node) => {
+                self.assign_local_var_offset(return_value_node, local_var_env);
+            }
+            Node::If(condition, then_body, else_body) => {
+                self.assign_local_var_offset(condition, local_var_env);
+                self.assign_local_var_offset(then_body, local_var_env);
+                if let Some(else_body) = else_body {
+                    self.assign_local_var_offset(else_body, local_var_env);
+                }
+            }
+            Node::While(condition, body) => {
+                self.assign_local_var_offset(condition, local_var_env);
+                self.assign_local_var_offset(body, local_var_env);
+            }
+            Node::For(init, check, update, body) => {
+                if let Some(init) = init {
+                    self.assign_local_var_offset(init, local_var_env);
+                }
+                if let Some(check) = check {
+                    self.assign_local_var_offset(check, local_var_env);
+                }
+                if let Some(update) = update {
+                    self.assign_local_var_offset(update, local_var_env);
+                }
+                self.assign_local_var_offset(body, local_var_env);
+            }
+            Node::Block(stmts) => {
+                for stmt in stmts.iter_mut() {
+                    self.assign_local_var_offset(stmt, local_var_env);
+                }
+            }
+            Node::Funcall(_, args) => {
+                for arg in args.iter_mut() {
+                    self.assign_local_var_offset(arg, local_var_env);
+                }
+            }
+            Node::Fundef(_, _, _) => {}
+        }
+    }
+
+    fn fundef(&mut self) -> Node {
+        let fn_name = self.token_list.expect_kind(&TokenKind::Ident).str.unwrap();
+        let args = self.fundef_args();
+        let body = self.fundef_body();
+        Node::Fundef(fn_name, args, body)
+    }
+
+    fn fundef_args(&mut self) -> Vec<String> {
+        let mut args: Vec<String> = vec![];
+
+        self.token_list.expect_kind(&TokenKind::LParen);
+        // 最大6つまでの引数をサポートする
+        let mut paren_consumed = false;
+        for _ in 1..=6 {
+            if self.token_list.try_consume(&TokenKind::RParen).is_none() {
+                args.push(self.fundef_arg());
+                if self.token_list.try_consume(&TokenKind::RParen).is_none() {
+                    self.token_list.expect_kind(&TokenKind::Comma);
+                } else {
+                    paren_consumed = true;
+                    break;
+                }
+            } else {
+                paren_consumed = true;
+                break;
+            }
+        }
+        if !paren_consumed {
+            self.token_list.expect_kind(&TokenKind::RParen);
+        }
+
+        args
+    }
+
+    fn fundef_arg(&mut self) -> String {
+        self.token_list.expect_kind(&TokenKind::Ident).str.unwrap()
+    }
+
+    fn fundef_body(&mut self) -> Vec<Node> {
+        self.token_list.expect_kind(&TokenKind::LBrace);
+        let mut stmts = vec![];
+        while self.token_list.try_consume(&TokenKind::RBrace).is_none() {
+            stmts.push(self.stmt());
+        }
+
+        stmts
     }
 
     fn stmt(&mut self) -> Node {
@@ -249,11 +364,9 @@ impl<'a> Lexer<'a> {
                     self.token_list.expect_kind(&TokenKind::RParen);
                 }
                 return Node::Funcall(ident_name, args);
-            } else if let Some(offset) = self.local_var_environment.variable_offset(&ident_name) {
-                return Node::LocalVar(*offset);
             } else {
-                let offset = self.local_var_environment.intern_new_variable(&ident_name);
-                return Node::LocalVar(offset);
+                // パースする段階ではOffsetは未確定
+                return Node::LocalVar(ident_name, None);
             }
         }
 

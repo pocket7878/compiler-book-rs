@@ -55,11 +55,12 @@ impl<'a> TokenList<'a> {
         }
     }
 
-    pub fn expect_kind(&mut self, kind: &TokenKind) {
+    pub fn expect_kind(&mut self, kind: &TokenKind) -> Token {
         let next = self.peek();
         if let Some(next) = next {
             if next.kind == *kind {
                 self.advance();
+                next
             } else {
                 self.exit_with_unexpected_token(next.position, &format!("Expected {:?}", kind));
             }

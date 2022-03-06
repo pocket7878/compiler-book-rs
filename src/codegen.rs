@@ -1,6 +1,7 @@
 use crate::lexer::{BinOpType, Node};
 
 const FRAME_POINTER_REGISTER: &str = "x29";
+const LINK_REGISTER: &str = "x30";
 const STACK_ALIGNMENT: i32 = 16;
 
 pub struct CodeGenerator {
@@ -16,9 +17,7 @@ impl CodeGenerator {
         self.generate_program_opening();
         for stmt in self.program.iter() {
             self.gen(stmt);
-            self.generate_pop_register_from_stack("x0");
         }
-        self.generate_program_ending();
     }
 
     fn gen(&self, node: &Node) {
@@ -27,10 +26,10 @@ impl CodeGenerator {
                 self.generate_comment(&format!("num: {}", n));
                 println!("\tmov x2, #{}", n);
                 self.generate_push_register_to_stack("x2");
-                return;
+                
             }
-            Node::LocalVar(offset) => {
-                self.generate_comment(&format!("local var offset: {}", offset));
+            Node::LocalVar(name, offset) => {
+                self.generate_comment(&format!("local var {} at {}", name, offset.unwrap()));
 
                 self.generate_comment("\t local var push address to stack");
                 self.generate_local_var(node);
@@ -43,37 +42,28 @@ impl CodeGenerator {
 
                 self.generate_comment("\t local var push value to stack");
                 self.generate_push_register_to_stack("x0");
-                return;
+                
             }
             Node::Assign(lhs, rhs) => {
-                self.generate_comment(&format!("assign"));
+                self.generate_comment("assign");
 
-                self.generate_comment(&format!("\tassign push lhs(address)"));
+                self.generate_comment("\tassign push lhs(address)");
                 self.generate_local_var(lhs.as_ref());
 
-                self.generate_comment(&format!("\tassign push rhs(value)"));
+                self.generate_comment("\tassign push rhs(value)");
                 self.gen(rhs.as_ref());
 
-                self.generate_comment(&format!("\tassign pop value and address"));
+                self.generate_comment("\tassign pop value and address");
                 self.generate_pop_register_from_stack("x1");
                 self.generate_pop_register_from_stack("x0");
 
-                self.generate_comment(&format!("\tassign store values to address"));
+                self.generate_comment("\tassign store values to address");
                 println!("\tstr x1, [x0]");
 
                 // Cでは代入式は代入された値を返す
-                self.generate_comment(&format!("\tassign push assigned value to stack"));
+                self.generate_comment("\tassign push assigned value to stack");
                 self.generate_push_register_to_stack("x1");
-                return;
-            }
-            Node::Return(value) => {
-                self.generate_comment("return");
-                self.gen(value.as_ref());
-                self.generate_pop_register_from_stack("x0");
-                println!("\tmov sp, {}", FRAME_POINTER_REGISTER);
-                self.generate_pop_register_from_stack(FRAME_POINTER_REGISTER);
-                println!("\tret");
-                return;
+                
             }
             Node::If(condition, then_body, else_body) => {
                 self.generate_comment("if");
@@ -94,7 +84,7 @@ impl CodeGenerator {
                     self.gen(then_body.as_ref());
                 }
                 println!(".Lend0:");
-                return;
+                
             }
             Node::While(condition, body) => {
                 println!(".Lbegin0:");
@@ -105,7 +95,7 @@ impl CodeGenerator {
                 self.gen(body.as_ref());
                 println!("\tb .Lbegin0");
                 println!(".Lend0:");
-                return;
+                
             }
             Node::For(init, check, update, body) => {
                 if let Some(init) = init {
@@ -127,7 +117,7 @@ impl CodeGenerator {
                 }
                 println!("\tb .Lbegin0");
                 println!(".Lend0:");
-                return;
+                
             }
             Node::Block(stmts) => {
                 for s in stmts {
@@ -143,7 +133,35 @@ impl CodeGenerator {
                     self.generate_pop_register_from_stack(&format!("x{}", i));
                 }
                 println!("\tbl _{}", name);
-                return;
+                // 関数の戻り値はx0に入っている
+                self.generate_push_register_to_stack("x0");
+                
+            }
+            Node::Return(value) => {
+                self.generate_comment("return");
+                self.gen(value.as_ref());
+                self.generate_pop_register_from_stack("x0");
+                println!("\tb .L.return.0");
+                
+            }
+            Node::Fundef(name, args, body) => {
+                println!("_{}:", name);
+                self.generate_comment("Store initial sp to frame pointer register");
+                println!("\tmov {}, sp", FRAME_POINTER_REGISTER);
+                self.generate_comment("push LR to stack");
+                self.generate_push_register_to_stack(LINK_REGISTER);
+                for arg in args.iter().enumerate() {
+                    self.generate_push_register_to_stack(&format!("x{}", arg.0));
+                }
+                for s in body {
+                    self.gen(s);
+                }
+                println!(".L.return.0:");
+                println!(
+                    "\tldur {}, [{}, #-16]",
+                    LINK_REGISTER, FRAME_POINTER_REGISTER
+                );
+                println!("\tret")
             }
             Node::BinOp(op, lhs, rhs) => {
                 self.gen(lhs.as_ref());
@@ -181,10 +199,14 @@ impl CodeGenerator {
 
     fn generate_local_var(&self, node: &Node) {
         match node {
-            Node::LocalVar(offset) => {
-                println!("\tmov x0, {}", FRAME_POINTER_REGISTER);
-                println!("\tsub x0, x0, #{}", offset);
-                self.generate_push_register_to_stack("x0");
+            Node::LocalVar(name, offset) => {
+                if let Some(offset) = offset {
+                    println!("\tmov x0, {}", FRAME_POINTER_REGISTER);
+                    println!("\tsub x0, x0, #{}", offset);
+                    self.generate_push_register_to_stack("x0");
+                } else {
+                    panic!("Local var {} has offset is undefined!", name);
+                }
             }
             _ => {
                 panic!("Node: {:?} is not local var", node);
@@ -194,15 +216,6 @@ impl CodeGenerator {
 
     fn generate_program_opening(&self) {
         println!(".globl	_main");
-        println!("_main:");
-        println!("\tmov {}, sp", FRAME_POINTER_REGISTER);
-        println!("\tsub sp, sp, #{}", STACK_ALIGNMENT * 26);
-    }
-
-    fn generate_program_ending(&self) {
-        println!("\tmov sp, {}", FRAME_POINTER_REGISTER);
-        self.generate_pop_register_from_stack(FRAME_POINTER_REGISTER);
-        println!("\tret");
     }
 
     fn generate_push_register_to_stack(&self, register: &str) {

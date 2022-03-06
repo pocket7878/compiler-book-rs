@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+#[derive(Clone)]
 pub struct LocalVarEnvironment {
     offset: i32,
     variables: HashMap<String, i32>,
@@ -8,20 +9,27 @@ pub struct LocalVarEnvironment {
 impl LocalVarEnvironment {
     pub fn new() -> Self {
         Self {
-            offset: 16,
+            offset: 0,
             variables: HashMap::new(),
         }
     }
 
-    pub fn intern_new_variable(&mut self, name: &str) -> i32 {
-        let var_offset = self.offset;
-        self.variables.insert(name.to_string(), var_offset);
-        self.offset += 16;
-
-        var_offset
+    pub fn new_with_base_offset(base_offset: i32) -> Self {
+        Self {
+            offset: base_offset,
+            variables: HashMap::new(),
+        }
     }
 
-    pub fn variable_offset(&self, name: &str) -> Option<&i32> {
-        self.variables.get(name)
+    pub fn intern(&mut self, name: &str) -> i32 {
+        if let Some(offset) = self.variables.get(name) {
+            *offset
+        } else {
+            let var_offset = self.offset;
+            self.variables.insert(name.to_string(), var_offset);
+            self.offset += 16;
+
+            var_offset
+        }
     }
 }

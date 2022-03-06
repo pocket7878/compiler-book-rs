@@ -15,7 +15,7 @@ pub enum BinOpType {
 pub enum Node {
     BinOp(BinOpType, Box<Node>, Box<Node>),
     Assign(Box<Node>, Box<Node>),
-    LocalVar(i32),
+    LocalVar(String, Option<i32>),
     Num(i32),
     Return(Box<Node>),
     If(Box<Node>, Box<Node>, Option<Box<Node>>),
@@ -28,4 +28,5 @@ pub enum Node {
     ),
     Block(Vec<Node>),
     Funcall(String, Vec<Node>),
+    Fundef(String, Vec<String>, Vec<Node>),
 }
