@@ -89,4 +89,7 @@ assert 55 'int fib(int a) { if (a == 0) { return 0; } else if (a == 1) { return 
 # addr
 assert 3 'int main() { int x; int y; x = 3; y = &x; return *y; }' 
 
+# int ptr
+assert 3 'int main() { int *x; int y; x = 3; y = &x; return *y; }' 
+
 echo OK

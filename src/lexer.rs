@@ -44,8 +44,8 @@ impl<'a> Lexer<'a> {
 
     fn assign_local_var_offset(&self, node: &mut Node, local_var_env: &mut LocalVarEnvironment) {
         match node {
-            Node::VarDef(name) => {
-                local_var_env.intern(name, VarType::Int);
+            Node::VarDef(name, ty) => {
+                local_var_env.intern(name, ty.clone());
             }
             Node::LocalVar(name, offset) => {
                 if offset.is_none() {
@@ -167,10 +167,14 @@ impl<'a> Lexer<'a> {
 
     fn stmt(&mut self) -> Node {
         if self.token_list.try_consume(&TokenKind::Int).is_some() {
+            let mut ty = VarType::Int;
+            while self.token_list.try_consume(&TokenKind::Star).is_some() {
+                ty = VarType::Ptr(Box::new(ty));
+            }
             let ident_name = self.token_list.expect_kind(&TokenKind::Ident).str.unwrap();
             self.token_list.expect_kind(&TokenKind::Semicolon);
 
-            Node::VarDef(ident_name)
+            Node::VarDef(ident_name, ty)
         } else if self.token_list.try_consume(&TokenKind::Return).is_some() {
             let return_value = self.expr();
             self.token_list.expect_kind(&TokenKind::Semicolon);
