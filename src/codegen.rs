@@ -180,8 +180,16 @@ impl CodeGenerator {
                 );
                 self.generate_comment("Update FP");
                 println!("\tmov {}, sp", FRAME_POINTER_REGISTER);
+                self.generate_comment("Allocate stack space for local variables & arguments");
+                println!("\tsub sp, sp, #{}", stack_size);
+                self.generate_comment("Copy arguments into stack");
                 for arg in args.iter().enumerate() {
-                    self.generate_push_register_to_stack(&format!("x{}", arg.0));
+                    println!(
+                        "\tstur x{}, [{}, #-{}]",
+                        arg.0,
+                        FRAME_POINTER_REGISTER,
+                        arg.0 * 16 + 16,
+                    );
                 }
                 for s in body {
                     self.gen(s, label_index, name);
