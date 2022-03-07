@@ -21,22 +21,7 @@ impl<'a> Lexer<'a> {
     pub fn program(&mut self) -> Vec<Node> {
         let mut nodes = vec![];
         while !self.token_list.at_end() {
-            // 関数の本体の変数のoffsetは引数に指定されているかどうかで変化するので、一度読みこんだ後に計算する
-            let mut function = self.fundef();
-            if let Node::Fundef(_, ref args, ref mut body) = function {
-                // スタックのトップには、FPとLRが保存されているので、-16以降が変数領域
-                let mut function_scope_local_var_env =
-                    LocalVarEnvironment::new_with_base_offset(16);
-                for arg in args {
-                    function_scope_local_var_env.intern(&arg.1, arg.0.clone());
-                }
-                for b in body.iter_mut() {
-                    self.assign_local_var_offset(b, &mut function_scope_local_var_env)
-                }
-                nodes.push(function);
-            } else {
-                unreachable!()
-            }
+            nodes.push(self.fundef());
         }
 
         nodes
@@ -109,7 +94,7 @@ impl<'a> Lexer<'a> {
                     self.assign_local_var_offset(arg, local_var_env);
                 }
             }
-            Node::Fundef(_, _, _) => {}
+            Node::Fundef { .. } => {}
         }
     }
 
@@ -117,8 +102,23 @@ impl<'a> Lexer<'a> {
         self.token_list.expect_kind(&TokenKind::Int);
         let fn_name = self.token_list.expect_kind(&TokenKind::Ident).str.unwrap();
         let args = self.fundef_args();
-        let body = self.fundef_body();
-        Node::Fundef(fn_name, args, body)
+        let mut body = self.fundef_body();
+
+        // assign offsets to local variables
+        // スタックのトップには、FPとLRが保存されているので、-16以降が変数領域
+        let mut function_scope_local_var_env = LocalVarEnvironment::new_with_base_offset(16);
+        for arg in args.iter() {
+            function_scope_local_var_env.intern(&arg.1, arg.0.clone());
+        }
+        for b in body.iter_mut() {
+            self.assign_local_var_offset(b, &mut function_scope_local_var_env)
+        }
+
+        Node::Fundef {
+            name: fn_name,
+            args,
+            body,
+        }
     }
 
     fn fundef_args(&mut self) -> Vec<(VarType, String)> {

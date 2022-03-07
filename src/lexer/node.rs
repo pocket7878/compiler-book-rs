@@ -30,7 +30,11 @@ pub enum Node {
     ),
     Block(Vec<Node>),
     Funcall(String, Vec<Node>),
-    Fundef(String, Vec<(VarType, String)>, Vec<Node>),
+    Fundef {
+        name: String,
+        args: Vec<(VarType, String)>,
+        body: Vec<Node>,
+    },
     Addr(Box<Node>),
     Deref(Box<Node>),
     VarDef(String, VarType),

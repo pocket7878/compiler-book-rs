@@ -18,9 +18,7 @@ impl CodeGenerator {
         let mut label_index = 0;
         for stmt in self.program.iter() {
             match stmt {
-                Node::Fundef(name, _, _) => {
-                    println!("\t.globl _{}", name);
-                    println!("\t.p2align 2");
+                Node::Fundef { name, .. } => {
                     self.gen(stmt, &mut label_index, name);
                 }
                 _ => {
@@ -31,6 +29,7 @@ impl CodeGenerator {
     }
 
     fn gen(&self, node: &Node, label_index: &mut i32, current_fn_name: &str) {
+        self.generate_comment(&format!("Compiling: {:?}", node));
         match node {
             Node::Num(n) => {
                 self.generate_comment(&format!("num: {}", n));
@@ -66,7 +65,11 @@ impl CodeGenerator {
                 self.generate_comment("assign");
 
                 self.generate_comment("\tassign push lhs(address)");
-                self.generate_local_var(lhs.as_ref());
+                if let Node::Deref(derefed_lhs) = &**lhs {
+                    self.gen(&derefed_lhs, label_index, current_fn_name);
+                } else {
+                    self.generate_local_var(lhs.as_ref());
+                }
 
                 self.generate_comment("\tassign push rhs(value)");
                 self.gen(rhs.as_ref(), label_index, current_fn_name);
@@ -161,7 +164,9 @@ impl CodeGenerator {
                 self.generate_pop_register_from_stack("x0");
                 println!("\tb .L.return_{}", current_fn_name);
             }
-            Node::Fundef(name, args, body) => {
+            Node::Fundef { name, args, body } => {
+                println!("\t.globl _{}", name);
+                println!("\t.p2align 2");
                 println!("_{}:", name);
                 self.generate_comment("Store FP & LR to stack");
                 println!(
