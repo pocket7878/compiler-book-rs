@@ -34,6 +34,7 @@ pub enum Node {
         name: String,
         args: Vec<(VarType, String)>,
         body: Vec<Node>,
+        stack_size: i32,
     },
     Addr(Box<Node>),
     Deref(Box<Node>),

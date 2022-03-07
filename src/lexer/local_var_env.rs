@@ -21,6 +21,10 @@ impl LocalVarEnvironment {
         }
     }
 
+    pub fn stack_size(&self) -> i32 {
+        self.offset - 16
+    }
+
     pub fn is_interned(&self, var_name: &str) -> bool {
         self.variables.contains_key(var_name)
     }

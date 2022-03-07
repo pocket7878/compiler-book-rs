@@ -164,7 +164,12 @@ impl CodeGenerator {
                 self.generate_pop_register_from_stack("x0");
                 println!("\tb .L.return_{}", current_fn_name);
             }
-            Node::Fundef { name, args, body } => {
+            Node::Fundef {
+                name,
+                args,
+                body,
+                stack_size,
+            } => {
                 println!("\t.globl _{}", name);
                 println!("\t.p2align 2");
                 println!("_{}:", name);

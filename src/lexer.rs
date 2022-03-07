@@ -113,11 +113,13 @@ impl<'a> Lexer<'a> {
         for b in body.iter_mut() {
             self.assign_local_var_offset(b, &mut function_scope_local_var_env)
         }
+        let stack_size = function_scope_local_var_env.stack_size();
 
         Node::Fundef {
             name: fn_name,
             args,
             body,
+            stack_size,
         }
     }
 
