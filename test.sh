@@ -98,7 +98,7 @@ assert 55 'int fib(int a) { if (a == 0) { return 0; } else if (a == 1) { return 
 assert 42 'int foo(int a) { int b; b = a + 1; return b; } int main() { return foo(41); }' 
 
 # addr
-assert 3 'int main() { int x; int y; x = 3; y = &x; return *y; }' 
+assert 3 'int main() { int x; int* y; x = 3; y = &x; return *y; }' 
 
 # int ptr
 assert 3 'int main() { int x; int *y; y = &x; *y = 3; return x; }' 

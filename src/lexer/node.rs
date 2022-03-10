@@ -1,4 +1,4 @@
-use super::var_type::VarType;
+use super::ty::Ty;
 
 #[derive(PartialEq, Eq, Debug)]
 
@@ -14,13 +14,12 @@ pub enum BinOpType {
 }
 
 #[derive(PartialEq, Eq, Debug)]
-pub enum Node {
+pub enum Ast {
     BinOp(BinOpType, Box<Node>, Box<Node>),
     Assign(Box<Node>, Box<Node>),
     LocalVar {
         name: String,
         offset: Option<i32>,
-        ty: Option<VarType>,
     },
     Num(i32),
     Return(Box<Node>),
@@ -36,11 +35,23 @@ pub enum Node {
     Funcall(String, Vec<Node>),
     Fundef {
         name: String,
-        args: Vec<(VarType, String)>,
+        args: Vec<(Ty, String)>,
         body: Vec<Node>,
         stack_size: i32,
     },
     Addr(Box<Node>),
     Deref(Box<Node>),
-    VarDef(String, VarType),
+    VarDef(String, Ty),
+}
+
+#[derive(PartialEq, Eq, Debug)]
+pub struct Node {
+    pub ast: Ast,
+    pub ty: Option<Ty>,
+}
+
+impl Node {
+    pub fn new(ast: Ast, ty: Option<Ty>) -> Self {
+        Self { ast, ty }
+    }
 }
