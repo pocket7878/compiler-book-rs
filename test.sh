@@ -1,7 +1,17 @@
 #!/bin/bash
 cat <<EOF | clang -xc -c -o tmp2.o -
 #include <stdio.h>
+#include <stdlib.h>
 int add(int x, int y) { return x+y; }
+void alloc4(int **p, int a, int b, int c, int d) {
+    int *int_ptr = (int *)malloc(sizeof(int) * 4);
+    int_ptr[0] = a;
+    int_ptr[1] = b;
+    int_ptr[2] = c;
+    int_ptr[3] = d;
+ 
+    *p = int_ptr;
+}
 EOF
 
 assert() {
@@ -92,5 +102,10 @@ assert 3 'int main() { int x; int y; x = 3; y = &x; return *y; }'
 
 # int ptr
 assert 3 'int main() { int x; int *y; y = &x; *y = 3; return x; }' 
+
+# pointer arithmetic
+assert 4 'int main() { int *p; alloc4(&p, 1, 2, 4, 8); int *q; q = p + 2; return *q; }'
+assert 8 'int main() { int *p; alloc4(&p, 1, 2, 4, 8); int *q; q = p + 3; return *q; }'
+assert 2 'int main() { int *p; alloc4(&p, 1, 2, 4, 8); int *q; q = p + 2; q = q - 1; return *q; }'
 
 echo OK

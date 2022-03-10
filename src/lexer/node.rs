@@ -17,7 +17,11 @@ pub enum BinOpType {
 pub enum Node {
     BinOp(BinOpType, Box<Node>, Box<Node>),
     Assign(Box<Node>, Box<Node>),
-    LocalVar(String, Option<i32>),
+    LocalVar {
+        name: String,
+        offset: Option<i32>,
+        ty: Option<VarType>,
+    },
     Num(i32),
     Return(Box<Node>),
     If(Box<Node>, Box<Node>, Option<Box<Node>>),

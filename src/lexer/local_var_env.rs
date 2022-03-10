@@ -2,9 +2,9 @@ use super::var_type::VarType;
 use std::collections::HashMap;
 
 #[derive(Clone)]
-struct VarInfo {
-    ty: VarType,
-    offset: i32,
+pub struct VarInfo {
+    pub ty: VarType,
+    pub offset: i32,
 }
 
 #[derive(Clone)]
@@ -25,25 +25,22 @@ impl LocalVarEnvironment {
         self.offset - 16
     }
 
-    pub fn is_interned(&self, var_name: &str) -> bool {
-        self.variables.contains_key(var_name)
+    pub fn get_var_info(&self, var_name: &str) -> Option<&VarInfo> {
+        self.variables.get(var_name)
     }
 
-    pub fn intern(&mut self, name: &str, ty: VarType) -> i32 {
+    pub fn intern(&mut self, name: &str, ty: VarType) -> VarInfo {
         if let Some(var_info) = self.variables.get(name) {
-            var_info.offset
+            var_info.clone()
         } else {
             let var_offset = self.offset;
-            self.variables.insert(
-                name.to_string(),
-                VarInfo {
-                    ty: ty,
-                    offset: var_offset,
-                },
-            );
+            let var_info = VarInfo {
+                ty,
+                offset: var_offset,
+            };
+            self.variables.insert(name.to_string(), var_info.clone());
             self.offset += 16;
-
-            var_offset
+            var_info
         }
     }
 }

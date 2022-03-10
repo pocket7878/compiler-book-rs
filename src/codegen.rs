@@ -1,4 +1,4 @@
-use crate::lexer::{BinOpType, Node};
+use crate::lexer::{BinOpType, Node, VarType};
 
 const FRAME_POINTER_REGISTER: &str = "x29";
 const LINK_REGISTER: &str = "x30";
@@ -37,7 +37,7 @@ impl CodeGenerator {
                 self.generate_push_register_to_stack("x2");
             }
             Node::VarDef(_, _) => {}
-            Node::LocalVar(name, offset) => {
+            Node::LocalVar { name, offset, .. } => {
                 self.generate_comment(&format!("local var {} at {}", name, offset.unwrap()));
 
                 self.generate_comment("\t local var push address to stack");
@@ -66,7 +66,7 @@ impl CodeGenerator {
 
                 self.generate_comment("\tassign push lhs(address)");
                 if let Node::Deref(derefed_lhs) = &**lhs {
-                    self.gen(&derefed_lhs, label_index, current_fn_name);
+                    self.gen(derefed_lhs, label_index, current_fn_name);
                 } else {
                     self.generate_local_var(lhs.as_ref());
                 }
@@ -204,10 +204,25 @@ impl CodeGenerator {
                 println!("\tret")
             }
             Node::BinOp(op, lhs, rhs) => {
+                let mut rhs_unit = 1;
+                match *op {
+                    BinOpType::Add | BinOpType::Sub => {
+                        if let Node::LocalVar {
+                            ty: Some(VarType::Ptr(pointed_type)),
+                            ..
+                        } = &**lhs
+                        {
+                            rhs_unit = pointed_type.size();
+                        }
+                    }
+                    _ => {}
+                }
+
                 self.gen(lhs.as_ref(), label_index, current_fn_name);
                 self.gen(rhs.as_ref(), label_index, current_fn_name);
-
                 self.generate_pop_register_from_stack("x1");
+                println!("\tmov x2, #{}", rhs_unit);
+                println!("\tmul x1, x1, x2");
                 self.generate_pop_register_from_stack("x0");
 
                 match *op {
@@ -246,7 +261,7 @@ impl CodeGenerator {
 
     fn generate_local_var(&self, node: &Node) {
         match node {
-            Node::LocalVar(name, offset) => {
+            Node::LocalVar { name, offset, .. } => {
                 if let Some(offset) = offset {
                     println!("\tmov x0, {}", FRAME_POINTER_REGISTER);
                     println!("\tsub x0, x0, #{}", offset);

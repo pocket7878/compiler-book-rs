@@ -6,7 +6,7 @@ pub use node::{BinOpType, Node};
 
 use self::local_var_env::LocalVarEnvironment;
 use crate::tokenizer::{TokenKind, TokenList};
-use var_type::VarType;
+pub use var_type::VarType;
 
 pub struct Lexer<'a> {
     token_list: TokenList<'a>,
@@ -27,15 +27,16 @@ impl<'a> Lexer<'a> {
         nodes
     }
 
-    fn assign_local_var_offset(&self, node: &mut Node, local_var_env: &mut LocalVarEnvironment) {
+    fn resolve_local_var(&self, node: &mut Node, local_var_env: &mut LocalVarEnvironment) {
         match node {
             Node::VarDef(name, ty) => {
                 local_var_env.intern(name, ty.clone());
             }
-            Node::LocalVar(name, offset) => {
+            Node::LocalVar { name, offset, ty } => {
                 if offset.is_none() {
-                    if local_var_env.is_interned(name) {
-                        *offset = Some(local_var_env.intern(name, VarType::Int));
+                    if let Some(var_info) = local_var_env.get_var_info(name) {
+                        *offset = Some(var_info.offset);
+                        *ty = Some(var_info.ty.clone());
                     } else {
                         panic!("Undefined variable: {}", name);
                     }
@@ -44,54 +45,54 @@ impl<'a> Lexer<'a> {
                 }
             }
             Node::BinOp(_, lhs, rhs) => {
-                self.assign_local_var_offset(lhs, local_var_env);
-                self.assign_local_var_offset(rhs, local_var_env);
+                self.resolve_local_var(lhs, local_var_env);
+                self.resolve_local_var(rhs, local_var_env);
             }
             Node::Assign(lhs, rhs) => {
-                self.assign_local_var_offset(lhs, local_var_env);
-                self.assign_local_var_offset(rhs, local_var_env);
+                self.resolve_local_var(lhs, local_var_env);
+                self.resolve_local_var(rhs, local_var_env);
             }
             Node::Num(_) => {}
             Node::Addr(node) => {
-                self.assign_local_var_offset(node, local_var_env);
+                self.resolve_local_var(node, local_var_env);
             }
             Node::Deref(node) => {
-                self.assign_local_var_offset(node, local_var_env);
+                self.resolve_local_var(node, local_var_env);
             }
             Node::Return(return_value_node) => {
-                self.assign_local_var_offset(return_value_node, local_var_env);
+                self.resolve_local_var(return_value_node, local_var_env);
             }
             Node::If(condition, then_body, else_body) => {
-                self.assign_local_var_offset(condition, local_var_env);
-                self.assign_local_var_offset(then_body, local_var_env);
+                self.resolve_local_var(condition, local_var_env);
+                self.resolve_local_var(then_body, local_var_env);
                 if let Some(else_body) = else_body {
-                    self.assign_local_var_offset(else_body, local_var_env);
+                    self.resolve_local_var(else_body, local_var_env);
                 }
             }
             Node::While(condition, body) => {
-                self.assign_local_var_offset(condition, local_var_env);
-                self.assign_local_var_offset(body, local_var_env);
+                self.resolve_local_var(condition, local_var_env);
+                self.resolve_local_var(body, local_var_env);
             }
             Node::For(init, check, update, body) => {
                 if let Some(init) = init {
-                    self.assign_local_var_offset(init, local_var_env);
+                    self.resolve_local_var(init, local_var_env);
                 }
                 if let Some(check) = check {
-                    self.assign_local_var_offset(check, local_var_env);
+                    self.resolve_local_var(check, local_var_env);
                 }
                 if let Some(update) = update {
-                    self.assign_local_var_offset(update, local_var_env);
+                    self.resolve_local_var(update, local_var_env);
                 }
-                self.assign_local_var_offset(body, local_var_env);
+                self.resolve_local_var(body, local_var_env);
             }
             Node::Block(stmts) => {
                 for stmt in stmts.iter_mut() {
-                    self.assign_local_var_offset(stmt, local_var_env);
+                    self.resolve_local_var(stmt, local_var_env);
                 }
             }
             Node::Funcall(_, args) => {
                 for arg in args.iter_mut() {
-                    self.assign_local_var_offset(arg, local_var_env);
+                    self.resolve_local_var(arg, local_var_env);
                 }
             }
             Node::Fundef { .. } => {}
@@ -111,7 +112,7 @@ impl<'a> Lexer<'a> {
             function_scope_local_var_env.intern(&arg.1, arg.0.clone());
         }
         for b in body.iter_mut() {
-            self.assign_local_var_offset(b, &mut function_scope_local_var_env)
+            self.resolve_local_var(b, &mut function_scope_local_var_env)
         }
         let stack_size = function_scope_local_var_env.stack_size();
 
@@ -154,7 +155,7 @@ impl<'a> Lexer<'a> {
         self.token_list.expect_kind(&TokenKind::Int);
         let name = self.token_list.expect_kind(&TokenKind::Ident).str.unwrap();
 
-        return (VarType::Int, name);
+        (VarType::Int, name)
     }
 
     fn fundef_body(&mut self) -> Vec<Node> {
@@ -402,8 +403,11 @@ impl<'a> Lexer<'a> {
                 }
                 return Node::Funcall(ident_name, args);
             } else {
-                // パースする段階ではOffsetは未確定
-                return Node::LocalVar(ident_name, None);
+                return Node::LocalVar {
+                    name: ident_name,
+                    offset: None,
+                    ty: None,
+                };
             }
         }
 
