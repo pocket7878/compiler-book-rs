@@ -108,4 +108,10 @@ assert 4 'int main() { int *p; alloc4(&p, 1, 2, 4, 8); int *q; q = p + 2; return
 assert 8 'int main() { int *p; alloc4(&p, 1, 2, 4, 8); int *q; q = p + 3; return *q; }'
 assert 2 'int main() { int *p; alloc4(&p, 1, 2, 4, 8); int *q; q = p + 2; q = q - 1; return *q; }'
 
+# sizeof
+assert 4 'int main() { int x; x = sizeof(x); return x; }'
+assert 4 'int main() { int x; x = sizeof x; return x; }'
+assert 8 'int main() { int x; int *y; x = sizeof(y); return x; }'
+assert 8 'int main() { int x; int *y; x = sizeof y ; return x; }'
+
 echo OK

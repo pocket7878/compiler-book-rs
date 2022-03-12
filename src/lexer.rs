@@ -352,6 +352,11 @@ impl<'a> Lexer<'a> {
     }
 
     fn unary(&mut self, local_var_env: &mut LocalVarEnvironment) -> Node {
+        if self.token_list.try_consume(&TokenKind::SizeOf).is_some() {
+            let node = self.unary(local_var_env);
+            let node_ty = node.ty.unwrap();
+            return Node::new(Ast::Num(node_ty.size()), Some(Ty::Int));
+        }
         if self.token_list.try_consume(&TokenKind::Plus).is_some() {
             return self.primary(local_var_env);
         }

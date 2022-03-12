@@ -25,6 +25,7 @@ pub enum TokenKind {
     For,
     Comma,
     Ampersand,
+    SizeOf,
     // Type like
     Int,
 }
