@@ -10,6 +10,8 @@ pub enum TokenKind {
     RParen,
     LBrace,
     RBrace,
+    LBracket,
+    RBracket,
     LessThan,
     LessThanOrEqual,
     GreaterThan,
