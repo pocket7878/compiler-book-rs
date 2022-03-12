@@ -103,6 +103,15 @@ impl<'a> Lexer<'a> {
                 ty = Ty::Ptr(Box::new(ty));
             }
             let ident_name = self.token_list.expect_kind(&TokenKind::Ident).str.unwrap();
+            let mut array_dimens = vec![];
+            while self.token_list.try_consume(&TokenKind::LBracket).is_some() {
+                let dimen = self.token_list.expect_num();
+                array_dimens.push(dimen);
+                self.token_list.expect_kind(&TokenKind::RBracket);
+            }
+            for dimen in array_dimens.iter().rev() {
+                ty = Ty::Array(Box::new(ty), *dimen);
+            }
             self.token_list.expect_kind(&TokenKind::Semicolon);
             local_var_env.intern(&ident_name, ty.clone());
 

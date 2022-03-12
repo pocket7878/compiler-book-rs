@@ -114,4 +114,7 @@ assert 4 'int main() { int x; x = sizeof x; return x; }'
 assert 8 'int main() { int x; int *y; x = sizeof(y); return x; }'
 assert 8 'int main() { int x; int *y; x = sizeof y ; return x; }'
 
+# array var
+assert 3 'int main() { int x[3][3]; int y; y = 3; return y; }'
+
 echo OK
