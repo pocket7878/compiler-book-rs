@@ -1,4 +1,4 @@
-use crate::lexer::{BinOpType, Node, VarType};
+use crate::lexer::{Ast, BinOpType, Node, Ty};
 
 const FRAME_POINTER_REGISTER: &str = "x29";
 const LINK_REGISTER: &str = "x30";
@@ -18,7 +18,10 @@ impl CodeGenerator {
         let mut label_index = 0;
         for stmt in self.program.iter() {
             match stmt {
-                Node::Fundef { name, .. } => {
+                Node {
+                    ast: Ast::Fundef { name, .. },
+                    ..
+                } => {
                     self.gen(stmt, &mut label_index, name);
                 }
                 _ => {
@@ -30,15 +33,15 @@ impl CodeGenerator {
 
     fn gen(&self, node: &Node, label_index: &mut i32, current_fn_name: &str) {
         self.generate_comment(&format!("Compiling: {:?}", node));
-        match node {
-            Node::Num(n) => {
+        match &node.ast {
+            Ast::Num(n) => {
                 self.generate_comment(&format!("num: {}", n));
                 println!("\tmov x2, #{}", n);
                 self.generate_push_register_to_stack("x2");
             }
-            Node::VarDef(_, _) => {}
-            Node::LocalVar { name, offset, .. } => {
-                self.generate_comment(&format!("local var {} at {}", name, offset.unwrap()));
+            Ast::VarDef(_, _) => {}
+            Ast::LocalVar { name, offset, .. } => {
+                self.generate_comment(&format!("local var {} at {}", name, offset));
 
                 self.generate_comment("\t local var push address to stack");
                 self.generate_local_var(node);
@@ -52,20 +55,24 @@ impl CodeGenerator {
                 self.generate_comment("\t local var push value to stack");
                 self.generate_push_register_to_stack("x0");
             }
-            Node::Addr(node) => {
+            Ast::Addr(ref node) => {
                 self.generate_local_var(node);
             }
-            Node::Deref(node) => {
+            Ast::Deref(ref node) => {
                 self.gen(node, label_index, current_fn_name);
                 self.generate_pop_register_from_stack("x0");
                 println!("\tldr x0, [x0]");
                 self.generate_push_register_to_stack("x0");
             }
-            Node::Assign(lhs, rhs) => {
+            Ast::Assign(lhs, rhs) => {
                 self.generate_comment("assign");
 
                 self.generate_comment("\tassign push lhs(address)");
-                if let Node::Deref(derefed_lhs) = &**lhs {
+                if let Node {
+                    ast: Ast::Deref(derefed_lhs),
+                    ..
+                } = &**lhs
+                {
                     self.gen(derefed_lhs, label_index, current_fn_name);
                 } else {
                     self.generate_local_var(lhs.as_ref());
@@ -85,7 +92,7 @@ impl CodeGenerator {
                 self.generate_comment("\tassign push assigned value to stack");
                 self.generate_push_register_to_stack("x1");
             }
-            Node::If(condition, then_body, else_body) => {
+            Ast::If(condition, then_body, else_body) => {
                 self.generate_comment("if");
                 self.generate_comment("\tif condition");
                 self.gen(condition.as_ref(), label_index, current_fn_name);
@@ -108,7 +115,7 @@ impl CodeGenerator {
 
                 println!(".Lend{}:", idx);
             }
-            Node::While(condition, body) => {
+            Ast::While(condition, body) => {
                 let idx = self.increment_label_index(label_index);
                 println!(".Lbegin{}:", idx);
                 self.gen(condition.as_ref(), label_index, current_fn_name);
@@ -119,7 +126,7 @@ impl CodeGenerator {
                 println!("\tb .Lbegin{}", idx);
                 println!(".Lend{}:", idx);
             }
-            Node::For(init, check, update, body) => {
+            Ast::For(init, check, update, body) => {
                 let idx = self.increment_label_index(label_index);
                 if let Some(init) = init {
                     self.gen(init.as_ref(), label_index, current_fn_name);
@@ -129,7 +136,11 @@ impl CodeGenerator {
                     self.gen(check.as_ref(), label_index, current_fn_name);
                 } else {
                     // checkがない場合は常にtrueにする
-                    self.gen(&Node::Num(1), label_index, current_fn_name);
+                    self.gen(
+                        &Node::new(Ast::Num(1), Some(Ty::Int)),
+                        label_index,
+                        current_fn_name,
+                    );
                 }
                 self.generate_pop_register_from_stack("x0");
                 println!("\tcmp x0, #0");
@@ -141,13 +152,13 @@ impl CodeGenerator {
                 println!("\tb .Lbegin{}", idx);
                 println!(".Lend{}:", idx);
             }
-            Node::Block(stmts) => {
+            Ast::Block(stmts) => {
                 for s in stmts {
                     self.gen(s, label_index, current_fn_name);
                     self.generate_pop_register_from_stack("x0");
                 }
             }
-            Node::Funcall(name, args) => {
+            Ast::Funcall(name, args) => {
                 for a in args {
                     self.gen(a, label_index, current_fn_name);
                 }
@@ -158,13 +169,13 @@ impl CodeGenerator {
                 // 関数の戻り値はx0に入っている
                 self.generate_push_register_to_stack("x0");
             }
-            Node::Return(value) => {
+            Ast::Return(value) => {
                 self.generate_comment("return");
                 self.gen(value.as_ref(), label_index, current_fn_name);
                 self.generate_pop_register_from_stack("x0");
                 println!("\tb .L.return_{}", current_fn_name);
             }
-            Node::Fundef {
+            Ast::Fundef {
                 name,
                 args,
                 body,
@@ -203,12 +214,12 @@ impl CodeGenerator {
                 );
                 println!("\tret")
             }
-            Node::BinOp(op, lhs, rhs) => {
+            Ast::BinOp(op, lhs, rhs) => {
                 let mut rhs_unit = 1;
                 match *op {
                     BinOpType::Add | BinOpType::Sub => {
-                        if let Node::LocalVar {
-                            ty: Some(VarType::Ptr(pointed_type)),
+                        if let Node {
+                            ty: Some(Ty::Ptr(pointed_type)),
                             ..
                         } = &**lhs
                         {
@@ -260,15 +271,11 @@ impl CodeGenerator {
     }
 
     fn generate_local_var(&self, node: &Node) {
-        match node {
-            Node::LocalVar { name, offset, .. } => {
-                if let Some(offset) = offset {
-                    println!("\tmov x0, {}", FRAME_POINTER_REGISTER);
-                    println!("\tsub x0, x0, #{}", offset);
-                    self.generate_push_register_to_stack("x0");
-                } else {
-                    panic!("Local var {} has offset is undefined!", name);
-                }
+        match &node.ast {
+            Ast::LocalVar { offset, .. } => {
+                println!("\tmov x0, {}", FRAME_POINTER_REGISTER);
+                println!("\tsub x0, x0, #{}", offset);
+                self.generate_push_register_to_stack("x0");
             }
             _ => {
                 panic!("Node: {:?} is not local var", node);

@@ -1,9 +1,9 @@
-use super::var_type::VarType;
+use super::ty::Ty;
 use std::collections::HashMap;
 
 #[derive(Clone)]
 pub struct VarInfo {
-    pub ty: VarType,
+    pub ty: Ty,
     pub offset: i32,
 }
 
@@ -29,7 +29,7 @@ impl LocalVarEnvironment {
         self.variables.get(var_name)
     }
 
-    pub fn intern(&mut self, name: &str, ty: VarType) -> VarInfo {
+    pub fn intern(&mut self, name: &str, ty: Ty) -> VarInfo {
         if let Some(var_info) = self.variables.get(name) {
             var_info.clone()
         } else {
