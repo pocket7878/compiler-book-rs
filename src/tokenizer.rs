@@ -77,6 +77,7 @@ impl<'a> Tokenizer<'a> {
                     ("while", TokenKind::While),
                     ("for", TokenKind::For),
                     ("int", TokenKind::Int),
+                    ("sizeof", TokenKind::SizeOf),
                 ];
                 let consumed_identifier = reserved_identifiers.into_iter().find(|(id, _)| c == *id);
                 if let Some((_, kind)) = consumed_identifier {
@@ -350,5 +351,12 @@ mod tests {
         let expr = "int";
         let mut token_list = super::Tokenizer::new(expr).tokenize();
         assert_eq!(token_list.next().unwrap().kind, super::TokenKind::Int);
+    }
+
+    #[test]
+    fn tokenize_sizeof() {
+        let expr = "sizeof";
+        let mut token_list = super::Tokenizer::new(expr).tokenize();
+        assert_eq!(token_list.next().unwrap().kind, super::TokenKind::SizeOf);
     }
 }
