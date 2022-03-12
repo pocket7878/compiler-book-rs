@@ -19,7 +19,7 @@ pub enum Ast {
     Assign(Box<Node>, Box<Node>),
     LocalVar {
         name: String,
-        offset: Option<i32>,
+        offset: i32,
     },
     Num(i32),
     Return(Box<Node>),

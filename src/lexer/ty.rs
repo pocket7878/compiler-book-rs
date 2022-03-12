@@ -12,9 +12,9 @@ impl Ty {
         }
     }
 
-    pub fn deref_type(&self) -> &Ty {
+    pub fn deref_type(&self) -> Ty {
         match self {
-            Ty::Ptr(ty) => ty,
+            Ty::Ptr(ty) => *ty.clone(),
             _ => panic!("deref_type called on non-pointer type: {:?}", self),
         }
     }

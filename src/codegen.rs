@@ -41,7 +41,7 @@ impl CodeGenerator {
             }
             Ast::VarDef(_, _) => {}
             Ast::LocalVar { name, offset, .. } => {
-                self.generate_comment(&format!("local var {} at {}", name, offset.unwrap()));
+                self.generate_comment(&format!("local var {} at {}", name, offset));
 
                 self.generate_comment("\t local var push address to stack");
                 self.generate_local_var(node);
@@ -272,14 +272,10 @@ impl CodeGenerator {
 
     fn generate_local_var(&self, node: &Node) {
         match &node.ast {
-            Ast::LocalVar { name, offset, .. } => {
-                if let Some(offset) = offset {
-                    println!("\tmov x0, {}", FRAME_POINTER_REGISTER);
-                    println!("\tsub x0, x0, #{}", offset);
-                    self.generate_push_register_to_stack("x0");
-                } else {
-                    panic!("Local var {} has offset is undefined!", name);
-                }
+            Ast::LocalVar { offset, .. } => {
+                println!("\tmov x0, {}", FRAME_POINTER_REGISTER);
+                println!("\tsub x0, x0, #{}", offset);
+                self.generate_push_register_to_stack("x0");
             }
             _ => {
                 panic!("Node: {:?} is not local var", node);
