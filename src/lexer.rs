@@ -462,13 +462,35 @@ impl<'a> Lexer<'a> {
                 // 今はint <function>しかサポートしていない
                 return Node::new(Ast::Funcall(ident_name, args), Some(Ty::Int));
             } else if let Some(var_info) = local_var_env.get_var_info(&ident_name) {
-                return Node::new(
+                let mut node = Node::new(
                     Ast::LocalVar {
                         name: ident_name,
                         offset: var_info.offset,
                     },
                     Some(var_info.ty.clone()),
                 );
+                let mut ty = var_info.ty.clone();
+                let mut array_dimens = vec![];
+                while self.token_list.try_consume(&TokenKind::LBracket).is_some() {
+                    let dimen = self.token_list.expect_num();
+                    array_dimens.push(dimen);
+                    self.token_list.expect_kind(&TokenKind::RBracket);
+                }
+                for dimen in array_dimens.iter().rev() {
+                    node = Node::new(
+                        Ast::Deref(Box::new(Node::new(
+                            Ast::BinOp(
+                                BinOpType::Add,
+                                Box::new(node),
+                                Box::new(Node::new(Ast::Num(*dimen), Some(Ty::Int))),
+                            ),
+                            Some(ty.clone()),
+                        ))),
+                        Some(ty.base_ty()),
+                    );
+                    ty = ty.base_ty();
+                }
+                return node;
             } else {
                 panic!("undefined variable: {}", ident_name);
             }
