@@ -2,6 +2,7 @@
 pub enum Ty {
     Int,
     Ptr(Box<Ty>),
+    Array(Box<Ty>, i32),
 }
 
 impl Ty {
@@ -9,13 +10,18 @@ impl Ty {
         match self {
             Ty::Int => 4,
             Ty::Ptr(_) => 8,
+            Ty::Array(ty, len) => {
+                let ty_size = ty.size();
+                ty_size * len
+            }
         }
     }
 
-    pub fn deref_type(&self) -> Ty {
+    pub fn base_ty(&self) -> Ty {
         match self {
             Ty::Ptr(ty) => *ty.clone(),
-            _ => panic!("deref_type called on non-pointer type: {:?}", self),
+            Ty::Array(ty, _) => *ty.clone(),
+            _ => panic!("{:?} is not refrence type", self),
         }
     }
 }

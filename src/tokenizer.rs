@@ -51,6 +51,8 @@ impl<'a> Tokenizer<'a> {
                 (")", TokenKind::RParen),
                 ("{", TokenKind::LBrace),
                 ("}", TokenKind::RBrace),
+                ("[", TokenKind::LBracket),
+                ("]", TokenKind::RBracket),
                 (";", TokenKind::Semicolon),
                 ("=", TokenKind::Assign),
                 (",", TokenKind::Comma),
@@ -358,5 +360,13 @@ mod tests {
         let expr = "sizeof";
         let mut token_list = super::Tokenizer::new(expr).tokenize();
         assert_eq!(token_list.next().unwrap().kind, super::TokenKind::SizeOf);
+    }
+
+    #[test]
+    fn tokenize_bracket() {
+        let expr = "[]";
+        let mut token_list = super::Tokenizer::new(expr).tokenize();
+        assert_eq!(token_list.next().unwrap().kind, super::TokenKind::LBracket);
+        assert_eq!(token_list.next().unwrap().kind, super::TokenKind::RBracket);
     }
 }
