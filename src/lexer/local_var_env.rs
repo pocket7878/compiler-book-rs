@@ -55,3 +55,13 @@ fn align_to_stack(v: i32, alignment: i32) -> i32 {
         result
     }
 }
+
+#[cfg(test)]
+mod test {
+    #[test]
+    fn test_align_to_stack() {
+        assert_eq!(16, super::align_to_stack(1, 16));
+        assert_eq!(16, super::align_to_stack(16, 16));
+        assert_eq!(32, super::align_to_stack(17, 16));
+    }
+}

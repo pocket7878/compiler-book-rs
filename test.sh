@@ -18,7 +18,7 @@ assert() {
   expected="$1"
   input="$2"
 
-  cargo run -- "$input" > tmp.s
+  RUST_BACKTRACE=1 cargo run -- "$input" > tmp.s
   cc -c tmp.s
   cc -o tmp tmp.o tmp2.o
   ./tmp
@@ -116,5 +116,9 @@ assert 8 'int main() { int x; int *y; x = sizeof y ; return x; }'
 
 # array var
 assert 3 'int main() { int x[3][3]; int y; y = 3; return y; }'
+assert 3 'int main() { int a[2]; *a = 1; *(a + 1) = 2; int *p; p = a; return *p + *(p + 1); }'
+assert 3 'int main() { int x[3]; *x=3; *(x+1)=4; *(x+2)=5; return *x; }'
+assert 4 'int main() { int x[3]; *x=3; *(x+1)=4; *(x+2)=5; return *(x+1); }'
+assert 5 'int main() { int x[3]; *x=3; *(x+1)=4; *(x+2)=5; return *(x+2); }'
 
 echo OK

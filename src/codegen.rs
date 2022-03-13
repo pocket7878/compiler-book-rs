@@ -50,18 +50,18 @@ impl CodeGenerator {
                 self.generate_pop_register_from_stack("x0");
 
                 self.generate_comment("\t local var read address content to register");
-                println!("\tldr x0, [x0]");
+                self.load(&node.ty);
 
                 self.generate_comment("\t local var push value to stack");
                 self.generate_push_register_to_stack("x0");
             }
-            Ast::Addr(ref node) => {
-                self.generate_local_var(node);
+            Ast::Addr(base_node) => {
+                self.generate_local_var(base_node);
             }
-            Ast::Deref(ref node) => {
-                self.gen(node, label_index, current_fn_name);
+            Ast::Deref(base_node) => {
+                self.gen(base_node, label_index, current_fn_name);
                 self.generate_pop_register_from_stack("x0");
-                println!("\tldr x0, [x0]");
+                self.load(&node.ty);
                 self.generate_push_register_to_stack("x0");
             }
             Ast::Assign(lhs, rhs) => {
@@ -215,25 +215,9 @@ impl CodeGenerator {
                 println!("\tret")
             }
             Ast::BinOp(op, lhs, rhs) => {
-                let mut rhs_unit = 1;
-                match *op {
-                    BinOpType::Add | BinOpType::Sub => {
-                        if let Node {
-                            ty: Some(Ty::Ptr(pointed_type)),
-                            ..
-                        } = &**lhs
-                        {
-                            rhs_unit = pointed_type.size();
-                        }
-                    }
-                    _ => {}
-                }
-
                 self.gen(lhs.as_ref(), label_index, current_fn_name);
                 self.gen(rhs.as_ref(), label_index, current_fn_name);
                 self.generate_pop_register_from_stack("x1");
-                println!("\tmov x2, #{}", rhs_unit);
-                println!("\tmul x1, x1, x2");
                 self.generate_pop_register_from_stack("x0");
 
                 match *op {
@@ -279,6 +263,22 @@ impl CodeGenerator {
             }
             _ => {
                 panic!("Node: {:?} is not local var", node);
+            }
+        }
+    }
+
+    fn load(&self, ty: &Option<Ty>) {
+        self.generate_comment(&format!("Load {:?} type value from x0", ty));
+        match *ty {
+            Some(Ty::Array(..)) => {
+                // 配列は先頭要素へのポインターとして扱うので、アドレスからロードはしない
+                self.generate_comment("Treat array as pointer");
+            }
+            None => {
+                panic!("ty is None");
+            }
+            _ => {
+                println!("\tldr x0, [x0]");
             }
         }
     }
