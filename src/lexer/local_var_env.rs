@@ -35,14 +35,30 @@ impl LocalVarEnvironment {
         if let Some(var_info) = self.variables.get(name) {
             var_info.clone()
         } else {
-            let var_offset = self.offset;
-            let var_info = VarInfo {
-                ty: ty.clone(),
-                offset: var_offset,
-            };
-            self.variables.insert(name.to_string(), var_info.clone());
-            self.offset += align_to_stack(var_offset + ty.size(), STACK_ALIGNMENT);
-            var_info
+            match ty {
+                Ty::Array(..) => {
+                    let size = ty.size();
+                    self.offset += size;
+                    let var_info = VarInfo {
+                        ty,
+                        offset: self.offset,
+                    };
+                    self.variables.insert(name.to_string(), var_info.clone());
+                    self.offset = align_to_stack(self.offset + 1, STACK_ALIGNMENT);
+                    self.offset += STACK_ALIGNMENT;
+                    var_info
+                }
+                other => {
+                    let var_offset = self.offset;
+                    let var_info = VarInfo {
+                        ty: other,
+                        offset: var_offset,
+                    };
+                    self.variables.insert(name.to_string(), var_info.clone());
+                    self.offset += STACK_ALIGNMENT;
+                    var_info
+                }
+            }
         }
     }
 }
