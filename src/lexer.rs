@@ -21,10 +21,14 @@ impl<'a> Lexer<'a> {
     pub fn program(&mut self) -> Vec<Node> {
         let mut nodes = vec![];
         while !self.token_list.at_end() {
-            nodes.push(self.fundef());
+            nodes.push(self.top_level());
         }
 
         nodes
+    }
+
+    pub fn top_level(&mut self) -> Node {
+        self.fundef()
     }
 
     fn fundef(&mut self) -> Node {
