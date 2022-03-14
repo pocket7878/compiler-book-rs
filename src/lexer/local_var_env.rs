@@ -24,7 +24,7 @@ impl LocalVarEnvironment {
     }
 
     pub fn stack_size(&self) -> i32 {
-        self.offset - STACK_ALIGNMENT
+        align_to_stack(self.offset, STACK_ALIGNMENT)
     }
 
     pub fn get_var_info(&self, var_name: &str) -> Option<&VarInfo> {
@@ -35,30 +35,14 @@ impl LocalVarEnvironment {
         if let Some(var_info) = self.variables.get(name) {
             var_info.clone()
         } else {
-            match ty {
-                Ty::Array(..) => {
-                    let size = ty.size();
-                    self.offset += size;
-                    let var_info = VarInfo {
-                        ty,
-                        offset: self.offset,
-                    };
-                    self.variables.insert(name.to_string(), var_info.clone());
-                    self.offset = align_to_stack(self.offset + 1, STACK_ALIGNMENT);
-                    self.offset += STACK_ALIGNMENT;
-                    var_info
-                }
-                other => {
-                    let var_offset = self.offset;
-                    let var_info = VarInfo {
-                        ty: other,
-                        offset: var_offset,
-                    };
-                    self.variables.insert(name.to_string(), var_info.clone());
-                    self.offset += STACK_ALIGNMENT;
-                    var_info
-                }
-            }
+            let size = ty.size();
+            self.offset += size;
+            let var_info = VarInfo {
+                ty,
+                offset: self.offset,
+            };
+            self.variables.insert(name.to_string(), var_info.clone());
+            var_info
         }
     }
 }

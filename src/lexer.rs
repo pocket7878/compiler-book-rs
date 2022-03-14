@@ -34,8 +34,16 @@ impl<'a> Lexer<'a> {
         // スタックのトップには、FPとLRが保存されているので、-16以降が変数領域
         let args = self.fundef_args();
         let mut function_scope_local_var_env = LocalVarEnvironment::new_with_base_offset(16);
-        for arg in args.iter() {
-            function_scope_local_var_env.intern(&arg.1, arg.0.clone());
+        let mut fn_args = vec![];
+        for arg in args.into_iter() {
+            let arg_var_info = function_scope_local_var_env.intern(&arg.1, arg.0.clone());
+            fn_args.push(Node::new(
+                Ast::LocalVar {
+                    name: arg.1.clone(),
+                    offset: arg_var_info.offset,
+                },
+                Some(arg.0),
+            ));
         }
         let body = self.fundef_body(&mut function_scope_local_var_env);
 
@@ -44,7 +52,7 @@ impl<'a> Lexer<'a> {
         Node::new(
             Ast::Fundef {
                 name: fn_name,
-                args,
+                args: fn_args,
                 body,
                 stack_size,
             },

@@ -86,7 +86,7 @@ impl CodeGenerator {
                 self.generate_pop_register_from_stack("x0");
 
                 self.generate_comment("\tassign store values to address");
-                println!("\tstr x1, [x0]");
+                self.store(&rhs.as_ref().ty);
 
                 // Cでは代入式は代入された値を返す
                 self.generate_comment("\tassign push assigned value to stack");
@@ -195,12 +195,14 @@ impl CodeGenerator {
                 println!("\tsub sp, sp, #{}", stack_size);
                 self.generate_comment("Copy arguments into stack");
                 for arg in args.iter().enumerate() {
-                    println!(
-                        "\tstur x{}, [{}, #-{}]",
-                        arg.0,
-                        FRAME_POINTER_REGISTER,
-                        arg.0 * 16 + 16,
-                    );
+                    if let Ast::LocalVar { offset, .. } = arg.1.ast {
+                        println!(
+                            "\tstur x{}, [{}, #-{}]",
+                            arg.0, FRAME_POINTER_REGISTER, offset,
+                        );
+                    } else {
+                        panic!("unexpected function arg ast: {:?}", arg.1.ast);
+                    }
                 }
                 for s in body {
                     self.gen(s, label_index, name);
@@ -274,11 +276,31 @@ impl CodeGenerator {
                 // 配列は先頭要素へのポインターとして扱うので、アドレスからロードはしない
                 self.generate_comment("Treat array as pointer");
             }
+            Some(ref non_array_ty) => match non_array_ty.size() {
+                4 => println!("\tldrsw x0, [x0]"),
+                8 => println!("\tldr x0, [x0]"),
+                _ => panic!("ty: {:?} is not supported", non_array_ty),
+            },
             None => {
                 panic!("ty is None");
             }
-            _ => {
-                println!("\tldr x0, [x0]");
+        }
+    }
+
+    fn store(&self, ty: &Option<Ty>) {
+        self.generate_comment(&format!("Store {:?} type value from x1", ty));
+        match *ty {
+            Some(Ty::Array(..)) => {
+                // Store array as pointer to head element
+                println!("\tstr x1, [x0]");
+            }
+            Some(ref non_array_ty) => match non_array_ty.size() {
+                4 => println!("\tstr w1, [x0]"),
+                8 => println!("\tstr x1, [x0]"),
+                _ => panic!("ty: {:?} is not supported", non_array_ty),
+            },
+            None => {
+                panic!("ty is None");
             }
         }
     }

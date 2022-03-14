@@ -35,7 +35,7 @@ pub enum Ast {
     Funcall(String, Vec<Node>),
     Fundef {
         name: String,
-        args: Vec<(Ty, String)>,
+        args: Vec<Node>,
         body: Vec<Node>,
         stack_size: i32,
     },
