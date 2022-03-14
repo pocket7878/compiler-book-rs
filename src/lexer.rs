@@ -28,51 +28,50 @@ impl<'a> Lexer<'a> {
     }
 
     pub fn top_level(&mut self) -> Node {
-        self.fundef()
-    }
-
-    fn fundef(&mut self) -> Node {
         self.token_list.expect_kind(&TokenKind::Int);
-        let fn_name = self.token_list.expect_kind(&TokenKind::Ident).str.unwrap();
-        // assign offsets to local variables
-        // スタックのトップには、FPとLRが保存されているので、-16以降が変数領域
-        let args = self.fundef_args();
-        let mut function_scope_local_var_env = LocalVarEnvironment::new_with_base_offset(16);
-        let mut fn_args = vec![];
-        for arg in args.into_iter() {
-            let arg_var_info = function_scope_local_var_env.intern(&arg.1, arg.0.clone());
-            fn_args.push(Node::new(
-                Ast::LocalVar {
-                    name: arg.1.clone(),
-                    offset: arg_var_info.offset,
+        let ident_name = self.token_list.expect_kind(&TokenKind::Ident).str.unwrap();
+        // 次のトークンを除いてみて ( があれば、関数宣言, なければ変数宣言
+        let next_token = self.token_list.peek().unwrap();
+        if next_token.kind == TokenKind::LParen {
+            // assign offsets to local variables
+            // スタックのトップには、FPとLRが保存されているので、-16以降が変数領域
+            let mut function_scope_local_var_env = LocalVarEnvironment::new_with_base_offset(16);
+            let args = self.fundef_args(&mut function_scope_local_var_env);
+            let body = self.fundef_body(&mut function_scope_local_var_env);
+            let stack_size = function_scope_local_var_env.stack_size();
+
+            Node::new(
+                Ast::Fundef {
+                    name: ident_name,
+                    args: args,
+                    body,
+                    stack_size,
                 },
-                Some(arg.0),
-            ));
+                None,
+            )
+        } else {
+            todo!()
         }
-        let body = self.fundef_body(&mut function_scope_local_var_env);
-
-        let stack_size = function_scope_local_var_env.stack_size();
-
-        Node::new(
-            Ast::Fundef {
-                name: fn_name,
-                args: fn_args,
-                body,
-                stack_size,
-            },
-            None,
-        )
     }
 
-    fn fundef_args(&mut self) -> Vec<(Ty, String)> {
-        let mut args: Vec<(Ty, String)> = vec![];
+    fn fundef_args(&mut self, local_var_env: &mut LocalVarEnvironment) -> Vec<Node> {
+        let mut args = vec![];
 
         self.token_list.expect_kind(&TokenKind::LParen);
         // 最大6つまでの引数をサポートする
         let mut paren_consumed = false;
         for _ in 1..=6 {
             if self.token_list.try_consume(&TokenKind::RParen).is_none() {
-                args.push(self.fundef_arg());
+                self.token_list.expect_kind(&TokenKind::Int);
+                let name = self.token_list.expect_kind(&TokenKind::Ident).str.unwrap();
+                let arg_var_info = local_var_env.intern(&name, Ty::Int);
+                args.push(Node::new(
+                    Ast::LocalVar {
+                        name: name,
+                        offset: arg_var_info.offset,
+                    },
+                    Some(arg_var_info.ty),
+                ));
                 if self.token_list.try_consume(&TokenKind::RParen).is_none() {
                     self.token_list.expect_kind(&TokenKind::Comma);
                 } else {
@@ -89,13 +88,6 @@ impl<'a> Lexer<'a> {
         }
 
         args
-    }
-
-    fn fundef_arg(&mut self) -> (Ty, String) {
-        self.token_list.expect_kind(&TokenKind::Int);
-        let name = self.token_list.expect_kind(&TokenKind::Ident).str.unwrap();
-
-        (Ty::Int, name)
     }
 
     fn fundef_body(&mut self, local_var_env: &mut LocalVarEnvironment) -> Vec<Node> {
