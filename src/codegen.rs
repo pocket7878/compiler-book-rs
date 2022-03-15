@@ -22,7 +22,13 @@ impl CodeGenerator {
                     ast: Ast::Fundef { name, .. },
                     ..
                 } => {
-                    self.gen(stmt, &mut label_index, name);
+                    self.gen(stmt, &mut label_index, Some(name));
+                }
+                Node {
+                    ast: Ast::GlobalVarDef(name, ty),
+                    ..
+                } => {
+                    println!(".comm _{},{}", name, ty.size());
                 }
                 _ => {
                     panic!("Unsupported toplevel node: {:?}", stmt);
@@ -31,7 +37,7 @@ impl CodeGenerator {
         }
     }
 
-    fn gen(&self, node: &Node, label_index: &mut i32, current_fn_name: &str) {
+    fn gen(&self, node: &Node, label_index: &mut i32, current_fn_name: Option<&str>) {
         self.generate_comment(&format!("Compiling: {:?}", node));
         match &node.ast {
             Ast::Num(n) => {
@@ -39,12 +45,13 @@ impl CodeGenerator {
                 println!("\tmov x2, #{}", n);
                 self.generate_push_register_to_stack("x2");
             }
-            Ast::VarDef(_, _) => {}
+            Ast::LocalVarDef(_, _) => {}
+            Ast::GlobalVarDef(..) => {}
             Ast::LocalVar { name, offset, .. } => {
                 self.generate_comment(&format!("local var {} at {}", name, offset));
 
                 self.generate_comment("\t local var push address to stack");
-                self.generate_local_var(node);
+                self.generate_var(node);
 
                 self.generate_comment("\t local var pop address from stack");
                 self.generate_pop_register_from_stack("x0");
@@ -55,8 +62,23 @@ impl CodeGenerator {
                 self.generate_comment("\t local var push value to stack");
                 self.generate_push_register_to_stack("x0");
             }
+            Ast::GlobalVar { name } => {
+                self.generate_comment(&format!("global var {}", name));
+
+                self.generate_comment("\t global var push address to stack");
+                self.generate_var(node);
+
+                self.generate_comment("\t global var pop address from stack");
+                self.generate_pop_register_from_stack("x0");
+
+                self.generate_comment("\t global var read address content to register");
+                self.load(&node.ty);
+
+                self.generate_comment("\t global var push value to stack");
+                self.generate_push_register_to_stack("x0");
+            }
             Ast::Addr(base_node) => {
-                self.generate_local_var(base_node);
+                self.generate_var(base_node);
             }
             Ast::Deref(base_node) => {
                 self.gen(base_node, label_index, current_fn_name);
@@ -75,7 +97,7 @@ impl CodeGenerator {
                 {
                     self.gen(derefed_lhs, label_index, current_fn_name);
                 } else {
-                    self.generate_local_var(lhs.as_ref());
+                    self.generate_var(lhs.as_ref());
                 }
 
                 self.generate_comment("\tassign push rhs(value)");
@@ -86,7 +108,7 @@ impl CodeGenerator {
                 self.generate_pop_register_from_stack("x0");
 
                 self.generate_comment("\tassign store values to address");
-                println!("\tstr x1, [x0]");
+                self.store(&rhs.as_ref().ty);
 
                 // Cでは代入式は代入された値を返す
                 self.generate_comment("\tassign push assigned value to stack");
@@ -173,7 +195,7 @@ impl CodeGenerator {
                 self.generate_comment("return");
                 self.gen(value.as_ref(), label_index, current_fn_name);
                 self.generate_pop_register_from_stack("x0");
-                println!("\tb .L.return_{}", current_fn_name);
+                println!("\tb .L.return_{}", current_fn_name.unwrap());
             }
             Ast::Fundef {
                 name,
@@ -195,15 +217,17 @@ impl CodeGenerator {
                 println!("\tsub sp, sp, #{}", stack_size);
                 self.generate_comment("Copy arguments into stack");
                 for arg in args.iter().enumerate() {
-                    println!(
-                        "\tstur x{}, [{}, #-{}]",
-                        arg.0,
-                        FRAME_POINTER_REGISTER,
-                        arg.0 * 16 + 16,
-                    );
+                    if let Ast::LocalVar { offset, .. } = arg.1.ast {
+                        println!(
+                            "\tstur x{}, [{}, #-{}]",
+                            arg.0, FRAME_POINTER_REGISTER, offset,
+                        );
+                    } else {
+                        panic!("unexpected function arg ast: {:?}", arg.1.ast);
+                    }
                 }
                 for s in body {
-                    self.gen(s, label_index, name);
+                    self.gen(s, label_index, Some(name));
                 }
                 println!(".L.return_{}:", name);
                 self.generate_comment("Restore FP & LR from stack");
@@ -254,11 +278,15 @@ impl CodeGenerator {
         idx
     }
 
-    fn generate_local_var(&self, node: &Node) {
+    fn generate_var(&self, node: &Node) {
         match &node.ast {
             Ast::LocalVar { offset, .. } => {
                 println!("\tmov x0, {}", FRAME_POINTER_REGISTER);
                 println!("\tsub x0, x0, #{}", offset);
+                self.generate_push_register_to_stack("x0");
+            }
+            Ast::GlobalVar { name } => {
+                println!("\tadrp x0, _{}@GOTPAGE", name);
                 self.generate_push_register_to_stack("x0");
             }
             _ => {
@@ -274,11 +302,31 @@ impl CodeGenerator {
                 // 配列は先頭要素へのポインターとして扱うので、アドレスからロードはしない
                 self.generate_comment("Treat array as pointer");
             }
+            Some(ref non_array_ty) => match non_array_ty.size() {
+                4 => println!("\tldrsw x0, [x0]"),
+                8 => println!("\tldr x0, [x0]"),
+                _ => panic!("ty: {:?} is not supported", non_array_ty),
+            },
             None => {
                 panic!("ty is None");
             }
-            _ => {
-                println!("\tldr x0, [x0]");
+        }
+    }
+
+    fn store(&self, ty: &Option<Ty>) {
+        self.generate_comment(&format!("Store {:?} type value from x1", ty));
+        match *ty {
+            Some(Ty::Array(..)) => {
+                // Store array as pointer to head element
+                println!("\tstr x1, [x0]");
+            }
+            Some(ref non_array_ty) => match non_array_ty.size() {
+                4 => println!("\tstr w1, [x0]"),
+                8 => println!("\tstr x1, [x0]"),
+                _ => panic!("ty: {:?} is not supported", non_array_ty),
+            },
+            None => {
+                panic!("ty is None");
             }
         }
     }

@@ -21,6 +21,9 @@ pub enum Ast {
         name: String,
         offset: i32,
     },
+    GlobalVar {
+        name: String,
+    },
     Num(i32),
     Return(Box<Node>),
     If(Box<Node>, Box<Node>, Option<Box<Node>>),
@@ -35,13 +38,14 @@ pub enum Ast {
     Funcall(String, Vec<Node>),
     Fundef {
         name: String,
-        args: Vec<(Ty, String)>,
+        args: Vec<Node>,
         body: Vec<Node>,
         stack_size: i32,
     },
     Addr(Box<Node>),
     Deref(Box<Node>),
-    VarDef(String, Ty),
+    LocalVarDef(String, Ty),
+    GlobalVarDef(String, Ty),
 }
 
 #[derive(PartialEq, Eq, Debug)]
