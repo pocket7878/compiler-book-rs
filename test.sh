@@ -134,5 +134,11 @@ assert 1 'int main() { int x[3]; x[0] = 1; x[1] = 2; x[2] = 4; return x[0]; }'
 assert 2 'int main() { int x[3]; x[0] = 1; x[1] = 2; x[2] = 4; return x[1]; }'
 assert 4 'int main() { int x[3]; x[0] = 1; x[1] = 2; x[2] = 4; return x[2]; }'
 assert 5 'int main() { int x[2][3]; x[1][2] = 5; return x[1][2]; }'
+
+# global var
+assert 42 'int foo; int main() { foo = 42; return foo; }' 
+assert 42 'int *y; int main() { int x; y = &x; *y = 42; return x; }' 
+assert 42 'int x[2][3]; int main() { x[1][2] = 42; return x[1][2]; }' 
+assert 42 'int x[2][3]; int main() { x[0][0] = 42; return **x; }' 
  
 echo OK

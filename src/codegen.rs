@@ -22,7 +22,13 @@ impl CodeGenerator {
                     ast: Ast::Fundef { name, .. },
                     ..
                 } => {
-                    self.gen(stmt, &mut label_index, name);
+                    self.gen(stmt, &mut label_index, Some(name));
+                }
+                Node {
+                    ast: Ast::GlobalVarDef(name, ty),
+                    ..
+                } => {
+                    println!(".comm _{},{}", name, ty.size());
                 }
                 _ => {
                     panic!("Unsupported toplevel node: {:?}", stmt);
@@ -31,7 +37,7 @@ impl CodeGenerator {
         }
     }
 
-    fn gen(&self, node: &Node, label_index: &mut i32, current_fn_name: &str) {
+    fn gen(&self, node: &Node, label_index: &mut i32, current_fn_name: Option<&str>) {
         self.generate_comment(&format!("Compiling: {:?}", node));
         match &node.ast {
             Ast::Num(n) => {
@@ -39,12 +45,13 @@ impl CodeGenerator {
                 println!("\tmov x2, #{}", n);
                 self.generate_push_register_to_stack("x2");
             }
-            Ast::VarDef(_, _) => {}
+            Ast::LocalVarDef(_, _) => {}
+            Ast::GlobalVarDef(..) => {}
             Ast::LocalVar { name, offset, .. } => {
                 self.generate_comment(&format!("local var {} at {}", name, offset));
 
                 self.generate_comment("\t local var push address to stack");
-                self.generate_local_var(node);
+                self.generate_var(node);
 
                 self.generate_comment("\t local var pop address from stack");
                 self.generate_pop_register_from_stack("x0");
@@ -55,8 +62,23 @@ impl CodeGenerator {
                 self.generate_comment("\t local var push value to stack");
                 self.generate_push_register_to_stack("x0");
             }
+            Ast::GlobalVar { name } => {
+                self.generate_comment(&format!("global var {}", name));
+
+                self.generate_comment("\t global var push address to stack");
+                self.generate_var(node);
+
+                self.generate_comment("\t global var pop address from stack");
+                self.generate_pop_register_from_stack("x0");
+
+                self.generate_comment("\t global var read address content to register");
+                self.load(&node.ty);
+
+                self.generate_comment("\t global var push value to stack");
+                self.generate_push_register_to_stack("x0");
+            }
             Ast::Addr(base_node) => {
-                self.generate_local_var(base_node);
+                self.generate_var(base_node);
             }
             Ast::Deref(base_node) => {
                 self.gen(base_node, label_index, current_fn_name);
@@ -75,7 +97,7 @@ impl CodeGenerator {
                 {
                     self.gen(derefed_lhs, label_index, current_fn_name);
                 } else {
-                    self.generate_local_var(lhs.as_ref());
+                    self.generate_var(lhs.as_ref());
                 }
 
                 self.generate_comment("\tassign push rhs(value)");
@@ -173,7 +195,7 @@ impl CodeGenerator {
                 self.generate_comment("return");
                 self.gen(value.as_ref(), label_index, current_fn_name);
                 self.generate_pop_register_from_stack("x0");
-                println!("\tb .L.return_{}", current_fn_name);
+                println!("\tb .L.return_{}", current_fn_name.unwrap());
             }
             Ast::Fundef {
                 name,
@@ -205,7 +227,7 @@ impl CodeGenerator {
                     }
                 }
                 for s in body {
-                    self.gen(s, label_index, name);
+                    self.gen(s, label_index, Some(name));
                 }
                 println!(".L.return_{}:", name);
                 self.generate_comment("Restore FP & LR from stack");
@@ -256,11 +278,15 @@ impl CodeGenerator {
         idx
     }
 
-    fn generate_local_var(&self, node: &Node) {
+    fn generate_var(&self, node: &Node) {
         match &node.ast {
             Ast::LocalVar { offset, .. } => {
                 println!("\tmov x0, {}", FRAME_POINTER_REGISTER);
                 println!("\tsub x0, x0, #{}", offset);
+                self.generate_push_register_to_stack("x0");
+            }
+            Ast::GlobalVar { name } => {
+                println!("\tadrp x0, _{}@GOTPAGE", name);
                 self.generate_push_register_to_stack("x0");
             }
             _ => {

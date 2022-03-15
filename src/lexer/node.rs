@@ -21,6 +21,9 @@ pub enum Ast {
         name: String,
         offset: i32,
     },
+    GlobalVar {
+        name: String,
+    },
     Num(i32),
     Return(Box<Node>),
     If(Box<Node>, Box<Node>, Option<Box<Node>>),
@@ -41,7 +44,8 @@ pub enum Ast {
     },
     Addr(Box<Node>),
     Deref(Box<Node>),
-    VarDef(String, Ty),
+    LocalVarDef(String, Ty),
+    GlobalVarDef(String, Ty),
 }
 
 #[derive(PartialEq, Eq, Debug)]
