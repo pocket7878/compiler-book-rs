@@ -30,6 +30,7 @@ pub enum TokenKind {
     SizeOf,
     // Type like
     Int,
+    Char,
 }
 
 #[derive(PartialEq, Eq, Debug, Clone)]

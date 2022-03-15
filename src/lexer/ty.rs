@@ -1,6 +1,7 @@
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub enum Ty {
     Int,
+    Char,
     Ptr(Box<Ty>),
     Array(Box<Ty>, i32),
 }
@@ -8,6 +9,7 @@ pub enum Ty {
 impl Ty {
     pub fn size(&self) -> i32 {
         match self {
+            Ty::Char => 1,
             Ty::Int => 4,
             Ty::Ptr(_) => 8,
             Ty::Array(ty, len) => {

@@ -79,6 +79,7 @@ impl<'a> Tokenizer<'a> {
                     ("while", TokenKind::While),
                     ("for", TokenKind::For),
                     ("int", TokenKind::Int),
+                    ("char", TokenKind::Char),
                     ("sizeof", TokenKind::SizeOf),
                 ];
                 let consumed_identifier = reserved_identifiers.into_iter().find(|(id, _)| c == *id);
@@ -368,5 +369,14 @@ mod tests {
         let mut token_list = super::Tokenizer::new(expr).tokenize();
         assert_eq!(token_list.next().unwrap().kind, super::TokenKind::LBracket);
         assert_eq!(token_list.next().unwrap().kind, super::TokenKind::RBracket);
+    }
+
+    #[test]
+    fn tokenize_char() {
+        let expr = "prefixed_char char_with_suffix char";
+        let mut token_list = super::Tokenizer::new(expr).tokenize();
+        assert_eq!(token_list.next().unwrap().kind, super::TokenKind::Ident);
+        assert_eq!(token_list.next().unwrap().kind, super::TokenKind::Ident);
+        assert_eq!(token_list.next().unwrap().kind, super::TokenKind::Char);
     }
 }
