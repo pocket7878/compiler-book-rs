@@ -34,6 +34,24 @@ impl<'a> Tokenizer<'a> {
                 break;
             }
 
+            if self.try_consume("//") {
+                let first_newline = self.input.find(|c| c == '\n').unwrap_or(self.input.len());
+                let (comment, rest_input) = self.input.split_at(first_newline);
+
+                self.input = &rest_input[1..];
+                self.pos += comment.chars().count();
+                continue;
+            }
+
+            if self.try_consume("/*") {
+                let first_newline = self.input.find("*/").unwrap_or(self.input.len());
+                let (comment, rest_input) = self.input.split_at(first_newline);
+
+                self.input = &rest_input[2..];
+                self.pos += comment.chars().count() + 2;
+                continue;
+            }
+
             let current_position = self.pos;
 
             let reserved_symbolic_tokens = vec![
