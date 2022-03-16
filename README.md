@@ -18,18 +18,11 @@ int main()
 	int e[2][3];
 	e[1][2] = 2;
 	c[9][9] = 10;
-	/*
-	int c;
-	b = &c;
-	*b = 20;
-	*/
 	// Line comment
 	/*
 	 * Block comment
-	 * Code can be insize
-	 * printf("hello, world\n");
 	 */
-	/* Inline block comment */printf("hello, world\n"); //Inline line comment
+	/* Inline block comment */printf("hello, world\n");//Inline line comment
 	return a + *b + c[9][9] + d + e[1][2];
 }
 ```
