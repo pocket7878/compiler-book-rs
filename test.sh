@@ -140,5 +140,8 @@ assert 42 'int foo; int main() { foo = 42; return foo; }'
 assert 42 'int *y; int main() { int x; y = &x; *y = 42; return x; }' 
 assert 42 'int x[2][3]; int main() { x[1][2] = 42; return x[1][2]; }' 
 assert 42 'int x[2][3]; int main() { x[0][0] = 42; return **x; }' 
+
+# char
+assert 3 'int main() { char x[3]; x[0] = -1; x[1] = -2; int y; y = 4; return x[0] + y; }' 
  
 echo OK

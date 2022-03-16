@@ -71,6 +71,21 @@ impl<'a> Tokenizer<'a> {
                 continue;
             }
 
+            if self.try_consume("\"") {
+                eprintln!("Try consume string");
+                let first_double_quote = self.input.find(|c| c == '"').unwrap_or(self.input.len());
+                let (string_contents, rest_input) = self.input.split_at(first_double_quote);
+
+                self.input = rest_input;
+                self.pos += string_contents.chars().count();
+                tokens.push(Token::new_str(
+                    current_position,
+                    string_contents.to_string(),
+                ));
+                eprintln!("Try consume string");
+                continue;
+            }
+
             if let Some(c) = self.try_consume_alnum_or_underscore() {
                 let reserved_identifiers = vec![
                     ("if", TokenKind::If),
@@ -93,7 +108,7 @@ impl<'a> Tokenizer<'a> {
 
             // 単純化のため、トークン化できなかったら即終了させる
             error_at(self.original_input, current_position, "Unrecognized token");
-            exit(1)
+            exit(1);
         }
 
         TokenList::new(self.original_input, tokens)
@@ -378,5 +393,14 @@ mod tests {
         assert_eq!(token_list.next().unwrap().kind, super::TokenKind::Ident);
         assert_eq!(token_list.next().unwrap().kind, super::TokenKind::Ident);
         assert_eq!(token_list.next().unwrap().kind, super::TokenKind::Char);
+    }
+
+    #[test]
+    fn tokenize_string() {
+        let expr = "\"hello, world\"";
+        let mut token_list = super::Tokenizer::new(expr).tokenize();
+        let next_token = token_list.next().unwrap();
+        assert_eq!(next_token.kind, super::TokenKind::String);
+        assert_eq!(next_token.str.unwrap(), "hello, world");
     }
 }

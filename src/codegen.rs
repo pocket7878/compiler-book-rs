@@ -1,4 +1,4 @@
-use crate::lexer::{Ast, BinOpType, Node, Ty};
+use crate::parser::{Ast, BinOpType, Node, Ty};
 
 const FRAME_POINTER_REGISTER: &str = "x29";
 const LINK_REGISTER: &str = "x30";
@@ -303,6 +303,7 @@ impl CodeGenerator {
                 self.generate_comment("Treat array as pointer");
             }
             Some(ref non_array_ty) => match non_array_ty.size() {
+                1 => println!("\tldrsb x0, [x0]"),
                 4 => println!("\tldrsw x0, [x0]"),
                 8 => println!("\tldr x0, [x0]"),
                 _ => panic!("ty: {:?} is not supported", non_array_ty),
@@ -321,6 +322,7 @@ impl CodeGenerator {
                 println!("\tstr x1, [x0]");
             }
             Some(ref non_array_ty) => match non_array_ty.size() {
+                1 => println!("\tstrb w1, [x0]"),
                 4 => println!("\tstr w1, [x0]"),
                 8 => println!("\tstr x1, [x0]"),
                 _ => panic!("ty: {:?} is not supported", non_array_ty),

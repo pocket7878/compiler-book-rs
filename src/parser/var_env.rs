@@ -78,7 +78,11 @@ impl VarEnvironment {
     pub fn resolve(&self, name: &str) -> Option<VarInfo> {
         if let Some(local_var_info) = self.local_variables.get(name) {
             Some(VarInfo::Local(local_var_info.clone()))
-        } else { self.global_variables.get(name).map(|global_var_info| VarInfo::Global(global_var_info.clone())) }
+        } else {
+            self.global_variables
+                .get(name)
+                .map(|global_var_info| VarInfo::Global(global_var_info.clone()))
+        }
     }
 
     pub fn new_local_scope(&self) -> Self {
@@ -93,7 +97,7 @@ impl VarEnvironment {
 #[cfg(test)]
 mod test {
     use super::{GlobalVarInfo, LocalVarInfo, VarEnvironment, VarInfo};
-    use crate::lexer::Ty;
+    use crate::parser::Ty;
 
     #[test]
     fn add_local_var() {

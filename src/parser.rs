@@ -9,12 +9,12 @@ pub use ty::Ty;
 
 use self::var_env::{GlobalVarInfo, LocalVarInfo, VarEnvironment, VarInfo};
 
-pub struct Lexer<'a> {
+pub struct Parser<'a> {
     token_list: TokenList<'a>,
 }
 
-impl<'a> Lexer<'a> {
-    pub fn new(token_list: TokenList<'a>) -> Lexer<'a> {
+impl<'a> Parser<'a> {
+    pub fn new(token_list: TokenList<'a>) -> Parser<'a> {
         Self { token_list }
     }
 
@@ -29,12 +29,12 @@ impl<'a> Lexer<'a> {
         nodes
     }
 
-    pub fn top_level(&mut self, var_env: &mut VarEnvironment) -> Node {
+    fn top_level(&mut self, var_env: &mut VarEnvironment) -> Node {
         self.token_list.expect_kind(&TokenKind::Int);
         let mut ty = Ty::Int;
         ty = self.type_prefix(&ty);
         let ident_name = self.token_list.expect_kind(&TokenKind::Ident).str.unwrap();
-        // 次のトークンを除いてみて ( があれば、関数宣言, なければ変数宣言
+        // 次のトークンをのぞいてみて ( があれば、関数宣言, なければ変数宣言
         let next_token = self.token_list.peek().unwrap();
         if next_token.kind == TokenKind::LParen {
             // assign offsets to local variables
@@ -142,6 +142,15 @@ impl<'a> Lexer<'a> {
             var_env.add_local_var(&ident_name, ty.clone());
 
             Node::new(Ast::LocalVarDef(ident_name, ty), None)
+        } else if self.token_list.try_consume(&TokenKind::Char).is_some() {
+            let mut ty = Ty::Char;
+            ty = self.type_prefix(&ty);
+            let ident_name = self.token_list.expect_kind(&TokenKind::Ident).str.unwrap();
+            ty = self.type_suffix(&ty);
+            self.token_list.expect_kind(&TokenKind::Semicolon);
+            var_env.add_local_var(&ident_name, ty.clone());
+
+            Node::new(Ast::LocalVarDef(ident_name, ty), None)
         } else if self.token_list.try_consume(&TokenKind::Return).is_some() {
             let return_value = self.expr(var_env);
             self.token_list.expect_kind(&TokenKind::Semicolon);
@@ -215,12 +224,34 @@ impl<'a> Lexer<'a> {
             }
 
             Node::new(Ast::Block(stmts), None)
+        } else if let Some(lvar) = self.local_var(var_env) {
+            lvar
         } else {
             let expr = self.expr(var_env);
             self.token_list.expect_kind(&TokenKind::Semicolon);
 
             expr
         }
+    }
+
+    fn local_var(&mut self, var_env: &mut VarEnvironment) -> Option<Node> {
+        let mut ty;
+        if self.token_list.try_consume(&TokenKind::Int).is_some() {
+            ty = Ty::Int;
+        } else if self.token_list.try_consume(&TokenKind::Char).is_some() {
+            ty = Ty::Char;
+        } else {
+            // Local var should start from type name;
+            return None;
+        }
+
+        ty = self.type_prefix(&ty);
+        let ident_name = self.token_list.expect_kind(&TokenKind::Ident).str.unwrap();
+        ty = self.type_suffix(&ty);
+        self.token_list.expect_kind(&TokenKind::Semicolon);
+        var_env.add_local_var(&ident_name, ty.clone());
+
+        Some(Node::new(Ast::LocalVarDef(ident_name, ty), None))
     }
 
     fn expr(&mut self, var_env: &mut VarEnvironment) -> Node {
@@ -324,21 +355,14 @@ impl<'a> Lexer<'a> {
                 let lhs = node;
                 let lhs_ty = lhs.ty.clone();
                 let mut rhs = self.mul(var_env);
-                match &lhs_ty {
-                    Some(Ty::Int) => {
-                        node = Node::new(
-                            Ast::BinOp(BinOpType::Add, Box::new(lhs), Box::new(rhs)),
-                            lhs_ty.clone(),
-                        );
-                    }
-                    //何かの値の参照をしている型は、参照先の型のサイズに応じてスケールする必要があるので欠け算のノードを挟んでおく
-                    Some(refrence_type) => {
+                if let Some(ref lhs_ty) = lhs_ty {
+                    if lhs_ty.is_reference_type() {
                         rhs = Node::new(
                             Ast::BinOp(
                                 BinOpType::Mul,
                                 Box::new(rhs),
                                 Box::new(Node::new(
-                                    Ast::Num(refrence_type.base_ty().size()),
+                                    Ast::Num(lhs_ty.clone().base_ty().size()),
                                     Some(Ty::Int),
                                 )),
                             ),
@@ -346,10 +370,16 @@ impl<'a> Lexer<'a> {
                         );
                         node = Node::new(
                             Ast::BinOp(BinOpType::Add, Box::new(lhs), Box::new(rhs)),
-                            lhs_ty.clone(),
+                            Some(lhs_ty.clone()),
+                        );
+                    } else {
+                        node = Node::new(
+                            Ast::BinOp(BinOpType::Add, Box::new(lhs), Box::new(rhs)),
+                            Some(lhs_ty.clone()),
                         );
                     }
-                    None => unreachable!(),
+                } else {
+                    unreachable!();
                 }
             } else if self.token_list.try_consume(&TokenKind::Minus).is_some() {
                 let lhs = node;

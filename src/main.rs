@@ -1,9 +1,9 @@
 mod codegen;
 mod error_report;
-mod lexer;
+mod parser;
 mod tokenizer;
 
-use crate::{lexer::Lexer, tokenizer::Tokenizer};
+use crate::{parser::Parser, tokenizer::Tokenizer};
 use std::env;
 
 fn main() {
@@ -15,7 +15,7 @@ fn main() {
 
     let program = args[1].clone();
     let token_list = Tokenizer::new(&program).tokenize();
-    let program_node = Lexer::new(token_list).program();
+    let program_node = Parser::new(token_list).program();
     let code_generator = codegen::CodeGenerator::new(program_node);
     code_generator.generate();
 }

@@ -19,6 +19,10 @@ impl Ty {
         }
     }
 
+    pub fn is_reference_type(&self) -> bool {
+        matches!(self, Ty::Ptr(_) | Ty::Array(..))
+    }
+
     pub fn base_ty(&self) -> Ty {
         match self {
             Ty::Ptr(ty) => *ty.clone(),
