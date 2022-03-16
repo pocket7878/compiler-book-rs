@@ -6,6 +6,7 @@ pub use node::{Ast, BinOpType, Node};
 
 use crate::tokenizer::{TokenKind, TokenList};
 pub use ty::Ty;
+pub use var_env::StringLiteralEntry;
 
 use self::var_env::{GlobalVarInfo, LocalVarInfo, VarEnvironment, VarInfo};
 
@@ -19,14 +20,14 @@ impl<'a> Parser<'a> {
     }
 
     /* Lexing Programs */
-    pub fn program(&mut self) -> Vec<Node> {
+    pub fn program(&mut self) -> (Vec<Node>, Vec<StringLiteralEntry>) {
         let mut nodes = vec![];
         let mut var_env = VarEnvironment::new();
         while !self.token_list.at_end() {
             nodes.push(self.top_level(&mut var_env));
         }
 
-        nodes
+        (nodes, var_env.string_literals)
     }
 
     fn top_level(&mut self, var_env: &mut VarEnvironment) -> Node {
@@ -39,7 +40,8 @@ impl<'a> Parser<'a> {
         if next_token.kind == TokenKind::LParen {
             // assign offsets to local variables
             // スタックのトップには、FPとLRが保存されているので、-16以降が変数領域
-            let mut function_scope_var_env = var_env.new_local_scope();
+            var_env.clear_local_variables();
+            let mut function_scope_var_env = var_env;
             let args = self.fundef_args(&mut function_scope_var_env);
             let body = self.fundef_body(&mut function_scope_var_env);
             let stack_size = function_scope_var_env.stack_size();
@@ -568,6 +570,15 @@ impl<'a> Parser<'a> {
             } else {
                 panic!("undefined variable: {}", ident_name);
             }
+        } else if let Some(str_literal) = self.token_list.try_consume(&TokenKind::String) {
+            let label = var_env.add_string_literal(&str_literal.str.clone().unwrap());
+            return Node::new(
+                Ast::StringLiteral { label: label },
+                Some(Ty::Array(
+                    Box::new(Ty::Char),
+                    str_literal.str.unwrap().len() as i32,
+                )),
+            );
         }
 
         let n = self.token_list.expect_num();

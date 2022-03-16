@@ -144,4 +144,8 @@ assert 42 'int x[2][3]; int main() { x[0][0] = 42; return **x; }'
 # char
 assert 3 'int main() { char x[3]; x[0] = -1; x[1] = -2; int y; y = 4; return x[0] + y; }' 
  
+# string
+assert 42 'int main() { char *c; c = "hello, world!\n"; printf(c); return 42; }' 
+assert 42 'int main() { printf("hello, world!\n"); return 42; }' 
+
 echo OK

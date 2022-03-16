@@ -24,6 +24,9 @@ pub enum Ast {
     GlobalVar {
         name: String,
     },
+    StringLiteral {
+        label: String,
+    },
     Num(i32),
     Return(Box<Node>),
     If(Box<Node>, Box<Node>, Option<Box<Node>>),

@@ -15,7 +15,7 @@ fn main() {
 
     let program = args[1].clone();
     let token_list = Tokenizer::new(&program).tokenize();
-    let program_node = Parser::new(token_list).program();
-    let code_generator = codegen::CodeGenerator::new(program_node);
+    let (program_node, string_literals) = Parser::new(token_list).program();
+    let code_generator = codegen::CodeGenerator::new(program_node, string_literals);
     code_generator.generate();
 }

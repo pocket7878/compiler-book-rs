@@ -72,17 +72,15 @@ impl<'a> Tokenizer<'a> {
             }
 
             if self.try_consume("\"") {
-                eprintln!("Try consume string");
                 let first_double_quote = self.input.find(|c| c == '"').unwrap_or(self.input.len());
                 let (string_contents, rest_input) = self.input.split_at(first_double_quote);
 
-                self.input = rest_input;
-                self.pos += string_contents.chars().count();
+                self.input = &rest_input[1..];
+                self.pos += string_contents.chars().count() + 1;
                 tokens.push(Token::new_str(
                     current_position,
                     string_contents.to_string(),
                 ));
-                eprintln!("Try consume string");
                 continue;
             }
 
@@ -402,5 +400,6 @@ mod tests {
         let next_token = token_list.next().unwrap();
         assert_eq!(next_token.kind, super::TokenKind::String);
         assert_eq!(next_token.str.unwrap(), "hello, world");
+        assert!(token_list.next().is_none());
     }
 }
