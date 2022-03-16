@@ -28,8 +28,10 @@ pub enum TokenKind {
     Comma,
     Ampersand,
     SizeOf,
+    String,
     // Type like
     Int,
+    Char,
 }
 
 #[derive(PartialEq, Eq, Debug, Clone)]
@@ -65,6 +67,15 @@ impl Token {
             kind: TokenKind::Ident,
             num: None,
             str: Some(str.to_string()),
+        }
+    }
+
+    pub fn new_str(position: usize, str: String) -> Self {
+        Self {
+            position,
+            kind: TokenKind::String,
+            num: None,
+            str: Some(str),
         }
     }
 }

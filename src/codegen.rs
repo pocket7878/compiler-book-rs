@@ -1,19 +1,24 @@
-use crate::lexer::{Ast, BinOpType, Node, Ty};
+use crate::parser::{Ast, BinOpType, Node, StringLiteralEntry, Ty};
 
 const FRAME_POINTER_REGISTER: &str = "x29";
 const LINK_REGISTER: &str = "x30";
 const STACK_ALIGNMENT: i32 = 16;
 
 pub struct CodeGenerator {
-    pub program: Vec<Node>,
+    program: Vec<Node>,
+    string_literal_entries: Vec<StringLiteralEntry>,
 }
 
 impl CodeGenerator {
-    pub fn new(program: Vec<Node>) -> Self {
-        Self { program }
+    pub fn new(program: Vec<Node>, string_literal_entries: Vec<StringLiteralEntry>) -> Self {
+        Self {
+            program,
+            string_literal_entries,
+        }
     }
 
     pub fn generate(&self) {
+        println!("\t.section	__TEXT,__text,regular,pure_instructions");
         // プログラム中でユニークなラベルを生成するため
         let mut label_index = 0;
         for stmt in self.program.iter() {
@@ -33,6 +38,14 @@ impl CodeGenerator {
                 _ => {
                     panic!("Unsupported toplevel node: {:?}", stmt);
                 }
+            }
+        }
+
+        if self.string_literal_entries.len() > 0 {
+            println!("\t.section	__TEXT,__cstring,cstring_literals");
+            for st_ent in self.string_literal_entries.iter() {
+                println!("{}:", st_ent.label);
+                println!("\t.asciz \"{}\"", st_ent.contents);
             }
         }
     }
@@ -72,6 +85,19 @@ impl CodeGenerator {
                 self.generate_pop_register_from_stack("x0");
 
                 self.generate_comment("\t global var read address content to register");
+                self.load(&node.ty);
+
+                self.generate_comment("\t global var push value to stack");
+                self.generate_push_register_to_stack("x0");
+            }
+            Ast::StringLiteral { label } => {
+                self.generate_comment(&format!("string literal with label: {}", label));
+
+                self.generate_comment("\t string literal var push address to stack");
+                println!("\tadrp x0, {}@PAGE", label);
+                println!("\tadd  x0, x0, {}@PAGEOFF", label);
+
+                self.generate_comment("\t string literal read address content to register");
                 self.load(&node.ty);
 
                 self.generate_comment("\t global var push value to stack");
@@ -303,6 +329,7 @@ impl CodeGenerator {
                 self.generate_comment("Treat array as pointer");
             }
             Some(ref non_array_ty) => match non_array_ty.size() {
+                1 => println!("\tldrsb x0, [x0]"),
                 4 => println!("\tldrsw x0, [x0]"),
                 8 => println!("\tldr x0, [x0]"),
                 _ => panic!("ty: {:?} is not supported", non_array_ty),
@@ -321,6 +348,7 @@ impl CodeGenerator {
                 println!("\tstr x1, [x0]");
             }
             Some(ref non_array_ty) => match non_array_ty.size() {
+                1 => println!("\tstrb w1, [x0]"),
                 4 => println!("\tstr w1, [x0]"),
                 8 => println!("\tstr x1, [x0]"),
                 _ => panic!("ty: {:?} is not supported", non_array_ty),

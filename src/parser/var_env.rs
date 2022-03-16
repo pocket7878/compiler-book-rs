@@ -16,6 +16,12 @@ pub struct GlobalVarInfo {
 }
 
 #[derive(PartialEq, Eq, Debug, Clone)]
+pub struct StringLiteralEntry {
+    pub contents: String,
+    pub label: String,
+}
+
+#[derive(PartialEq, Eq, Debug, Clone)]
 pub enum VarInfo {
     Local(LocalVarInfo),
     Global(GlobalVarInfo),
@@ -26,6 +32,7 @@ pub struct VarEnvironment {
     stack_offset: i32,
     local_variables: HashMap<String, LocalVarInfo>,
     global_variables: HashMap<String, GlobalVarInfo>,
+    pub string_literals: Vec<StringLiteralEntry>,
 }
 
 impl VarEnvironment {
@@ -34,6 +41,7 @@ impl VarEnvironment {
             stack_offset: 16,
             local_variables: HashMap::new(),
             global_variables: HashMap::new(),
+            string_literals: vec![],
         }
     }
 
@@ -73,27 +81,37 @@ impl VarEnvironment {
         }
     }
 
+    pub fn add_string_literal(&mut self, str: &str) -> String {
+        let label = format!("l_.str.{}", self.string_literals.len());
+        self.string_literals.push(StringLiteralEntry {
+            contents: str.to_owned(),
+            label: label.clone(),
+        });
+
+        label
+    }
+
     // 変数の名前を解決する
     // ローカル変数は同名のグローバル変数をシャドーイングするので、まずはローカルの変数を探す
     pub fn resolve(&self, name: &str) -> Option<VarInfo> {
         if let Some(local_var_info) = self.local_variables.get(name) {
             Some(VarInfo::Local(local_var_info.clone()))
-        } else { self.global_variables.get(name).map(|global_var_info| VarInfo::Global(global_var_info.clone())) }
+        } else {
+            self.global_variables
+                .get(name)
+                .map(|global_var_info| VarInfo::Global(global_var_info.clone()))
+        }
     }
 
-    pub fn new_local_scope(&self) -> Self {
-        Self {
-            stack_offset: 16,
-            local_variables: HashMap::new(),
-            global_variables: self.global_variables.clone(),
-        }
+    pub fn clear_local_variables(&mut self) {
+        self.local_variables.clear()
     }
 }
 
 #[cfg(test)]
 mod test {
     use super::{GlobalVarInfo, LocalVarInfo, VarEnvironment, VarInfo};
-    use crate::lexer::Ty;
+    use crate::parser::Ty;
 
     #[test]
     fn add_local_var() {
