@@ -313,6 +313,7 @@ impl CodeGenerator {
             }
             Ast::GlobalVar { name } => {
                 println!("\tadrp x0, _{}@GOTPAGE", name);
+                println!("\tldr x0, [x0, _{}@GOTPAGEOFF]", name);
                 self.generate_push_register_to_stack("x0");
             }
             _ => {
